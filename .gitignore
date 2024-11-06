@@ -3,6 +3,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+#config file
+config.json
+#Contend of extracted_pptx and Output folders
+extracted_pptx/*
+Output/*
+
+
 # C extensions
 *.so
 
@@ -26,7 +33,8 @@ share/python-wheels/
 *.egg
 MANIFEST
 .env
-test_data/
+test_ppt/
+extracted_ppt/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
