@@ -1,0 +1,28 @@
+{
+    "languages": [
+      { "code": "en-US", "language": "English (United States)" },
+      { "code": "en-GB", "language": "English (United Kingdom)" },
+      { "code": "de-DE", "language": "German (Germany)" },
+      { "code": "fr-FR", "language": "French (France)" },
+      { "code": "es-ES", "language": "Spanish (Spain)" },
+      { "code": "it-IT", "language": "Italian (Italy)" },
+      { "code": "pt-BR", "language": "Portuguese (Brazil)" },
+      { "code": "pt-PT", "language": "Portuguese (Portugal)" },
+      { "code": "zh-CN", "language": "Chinese (Simplified, China)" },
+      { "code": "zh-TW", "language": "Chinese (Traditional, Taiwan)" },
+      { "code": "ja-JP", "language": "Japanese (Japan)" },
+      { "code": "ko-KR", "language": "Korean (South Korea)" },
+      { "code": "ru-RU", "language": "Russian (Russia)" },
+      { "code": "ar-SA", "language": "Arabic (Saudi Arabia)" },
+      { "code": "nl-NL", "language": "Dutch (Netherlands)" },
+      { "code": "sv-SE", "language": "Swedish (Sweden)" },
+      { "code": "da-DK", "language": "Danish (Denmark)" },
+      { "code": "fi-FI", "language": "Finnish (Finland)" },
+      { "code": "nb-NO", "language": "Norwegian (Norway)" },
+      { "code": "pl-PL", "language": "Polish (Poland)" },
+      { "code": "cs-CZ", "language": "Czech (Czech Republic)" },
+      { "code": "hu-HU", "language": "Hungarian (Hungary)" },
+      { "code": "tr-TR", "language": "Turkish (Turkey)" },
+      { "code": "he-IL", "language": "Hebrew (Israel)" }
+    ]
+  }
