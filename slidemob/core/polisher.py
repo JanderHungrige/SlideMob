@@ -13,7 +13,8 @@ class SlidePolisher(PowerpointPipeline):
 
         super().__init__()
 
-
+            
+        self.Further_StyleInstructions = ""
         if Further_StyleInstructions != "None":
             self.Further_StyleInstructions = f" Here are some further wording style instructions: {self.Further_StyleInstructions}"
         else:

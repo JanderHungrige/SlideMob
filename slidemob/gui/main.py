@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import json
 import os
+import logging
 
 from ..pipelines.xml_creator import XMLcreator
 from ..pipelines.translator import PowerPointTranslator
@@ -12,7 +13,7 @@ class SlideMobGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("SlideMob PowerPoint Processor")
-        self.root.geometry("600x500")
+        self.root.geometry("700x600")
         
         # Variables
         self.pptx_path = tk.StringVar()
@@ -24,6 +25,17 @@ class SlideMobGUI:
         self.extract_var = tk.BooleanVar(value=True)
         self.polish_var = tk.BooleanVar(value=False)
         self.translate_var = tk.BooleanVar(value=False)
+        
+        # Load the logo image
+        current_dir = os.path.dirname(__file__)
+        logo_path = os.path.join(current_dir, "../gui/assets/eraneos_bg Small.png")
+        logo_path = os.path.abspath(logo_path)
+        self.logo_image = tk.PhotoImage(file=logo_path)
+        # Create a canvas for the logo lower right corner
+        self.logo_canvas = tk.Canvas(self.root, width=self.logo_image.width(), height=self.logo_image.height())
+        self.logo_canvas.create_image(0, 0, anchor="nw", image=self.logo_image)
+        self.logo_canvas.pack(side="bottom", anchor="se", padx=4, pady=4)
+
         
         self.create_widgets()
         
@@ -90,7 +102,11 @@ class SlideMobGUI:
             self.pptx_path.set(filename)
             
     def browse_output(self):
-        folder = filedialog.askdirectory(title="Select Output Folder")
+        if self.pptx_path.get():
+            startfolder = os.path.dirname(self.pptx_path.get())
+        else:
+            startfolder = os.getcwd()
+        folder = filedialog.askdirectory(title="Select Output Folder",initialdir=startfolder)
         if folder:
             self.output_path.set(folder)
             
@@ -98,7 +114,7 @@ class SlideMobGUI:
         if not self.pptx_path.get() or not self.output_path.get():
             messagebox.showerror("Error", "Please select both input file and output location")
             return
-            
+        
         try:
             # Create config
             config = {
