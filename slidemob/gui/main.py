@@ -9,6 +9,8 @@ from ..pipelines.xml_creator import XMLcreator
 from ..pipelines.translator import PowerPointTranslator
 from ..pipelines.polisher import PowerPointPolisher
 
+from slidemob.utils.errorhandler import setup_error_logging
+
 class SlideMobGUI:
     def __init__(self, root):
         self.root = root
@@ -45,6 +47,8 @@ class SlideMobGUI:
         )
         self.logo_canvas.pack(side="bottom", anchor="se")
 
+        # Initialize error logging
+        setup_error_logging()
         
         self.create_widgets()
         
@@ -191,8 +195,9 @@ class SlideMobGUI:
             messagebox.showinfo("Success", "PowerPoint processing completed successfully!")
             
         except Exception as e:
-            self.status_var.set("Error occurred!")
-            messagebox.showerror("Error", f"An error occurred: {str(e)}")
+            self.status_var.set("Error occurred! Check error_logs folder for details.")
+            messagebox.showerror("Error", "An error occurred. Check error_logs folder for details.")
+            raise  # Re-raise the exception to be caught by the error handler
 
 if __name__ == "__main__":
     root = tk.Tk()

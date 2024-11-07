@@ -11,9 +11,11 @@ def setup_error_logging():
     
     # Create error_logs directory if it doesn't exist
     os.makedirs(log_dir, exist_ok=True)
+    print(f"Created error log directory at: {log_dir}")
     
     # Create log file path with timestamp to avoid overwrites
     log_file = log_dir / f"error_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+    print(f"Will log errors to: {log_file}")
     
     def exception_handler(exc_type, exc_value, exc_traceback):
         try:
@@ -26,22 +28,19 @@ Traceback:
 {''.join(traceback.format_tb(exc_traceback))}
 ==============================
 """
-            # Use with statement to ensure proper file handling
+            print(f"Attempting to log error to: {log_file}")
             with open(log_file, 'a', encoding='utf-8') as f:
                 f.write(error_msg)
-                f.flush()  # Force write to disk
-                os.fsync(f.fileno())  # Ensure it's written to disk
+                f.flush()
+                os.fsync(f.fileno())
+            print("Error successfully logged")
                 
         except Exception as e:
-            # If we can't write to the log file, print to stderr
             print(f"Error writing to log file: {e}", file=sys.stderr)
             print(f"Attempted to write to: {log_file}", file=sys.stderr)
             
         # Call the original excepthook to maintain default behavior
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
-        
-        # Force flush stdout and stderr
-        sys.stdout.flush()
-        sys.stderr.flush()
     
     sys.excepthook = exception_handler
+    return log_dir  # Return the log directory path for verification

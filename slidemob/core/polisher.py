@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import xml.etree.ElementTree as ET
 import json
 from typing import List
+import os
 
 class PolishResponse(BaseModel):
     polished_text: str
