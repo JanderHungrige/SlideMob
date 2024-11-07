@@ -31,10 +31,19 @@ class SlideMobGUI:
         logo_path = os.path.join(current_dir, "../gui/assets/eraneos_bg Small.png")
         logo_path = os.path.abspath(logo_path)
         self.logo_image = tk.PhotoImage(file=logo_path)
-        # Create a canvas for the logo lower right corner
-        self.logo_canvas = tk.Canvas(self.root, width=self.logo_image.width(), height=self.logo_image.height())
-        self.logo_canvas.create_image(0, 0, anchor="nw", image=self.logo_image)
-        self.logo_canvas.pack(side="bottom", anchor="se", padx=4, pady=4)
+        
+        # Create a canvas for the logo with padding
+        canvas_width = self.logo_image.width() + 8  # Add padding
+        canvas_height = self.logo_image.height() + 8  # Add padding
+        self.logo_canvas = tk.Canvas(self.root, width=canvas_width, height=canvas_height)
+        # Center the image in the canvas
+        self.logo_canvas.create_image(
+            canvas_width//2, 
+            canvas_height//2, 
+            anchor="center", 
+            image=self.logo_image
+        )
+        self.logo_canvas.pack(side="bottom", anchor="se")
 
         
         self.create_widgets()
