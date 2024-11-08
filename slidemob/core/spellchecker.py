@@ -1,4 +1,4 @@
-from ..core.base import PowerpointPipeline
+from .base_class import PowerpointPipeline
 import xml.etree.ElementTree as ET
 import re
 from spellchecker import SpellChecker

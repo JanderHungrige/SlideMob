@@ -1,10 +1,10 @@
-import xml.etree.ElementTree as ET
+from lxml import etree as ET
 from openai import OpenAI
 from pydantic import BaseModel
 import json
 from langdetect import detect
 from typing import List
-from ..core.base import PowerpointPipeline
+from .base_class import PowerpointPipeline
 import os
 
 class TranslationResponse(BaseModel):
@@ -13,16 +13,17 @@ class TranslationResponse(BaseModel):
 class SlideTranslator(PowerpointPipeline):
     def __init__(self, 
                  target_language: str,
-                 Further_StyleInstructions: str = "None"): 
+                 Further_StyleInstructions: str = ""): 
 
         super().__init__()
 
         self.target_language = target_language
+        self.Further_StyleInstructions = Further_StyleInstructions
         # Load language codes mapping
         with open("config_languages.json", "r") as f:
             self.language_codes = json.load(f)
 
-        if Further_StyleInstructions != "None":
+        if self.Further_StyleInstructions != "":
             self.Further_StyleInstructions = f" Here are some further wording style instructions: {self.Further_StyleInstructions}"
         else:
             self.Further_StyleInstructions = ""
@@ -213,12 +214,11 @@ class SlideTranslator(PowerpointPipeline):
                     if text_elem is not None:
                         detected_lang = self.detect_pptx_language(text_elem.text.strip())
                         # Find and update the language attribute in the corresponding rPr element
-                        parent_run = text_elem.getparent()
-                        if parent_run is not None:
-                            rPr = parent_run.find('a:rPr', self.namespaces)
+                        #parent_run = text_elem.getparent()
+                        rPr = run.find('a:rPr', self.namespaces)
                         if rPr is not None:
-                                rPr.set('lang', detected_lang)
-                                print(f"\tUpdated language for '{translation.strip()}' to {detected_lang}")
+                            rPr.set('lang', detected_lang)
+                            print(f"\tUpdated language for '{translation.strip()}' to {detected_lang}")
                         # else:
                         #     # Create rPr element if it doesn't exist
                         #     rPr = ET.SubElement(run, f"{{{self.namespaces['a']}}}rPr")

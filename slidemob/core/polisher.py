@@ -1,4 +1,4 @@
-from ..core.base import PowerpointPipeline
+from .base_class import PowerpointPipeline
 from pydantic import BaseModel
 import xml.etree.ElementTree as ET
 import json
