@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import json
 from typing import List
 import os
-
+import traceback
 class PolishResponse(BaseModel):
     polished_text: str
 
@@ -52,10 +52,21 @@ class SlidePolisher(PowerpointPipeline):
                     ],
                     temperature=0.3,
                 )
+                if not response.choices[0]:
+                    print(f"No response from LLM with this text: {text}")
+                    return text
+                elif not response.choices[0].message:
+                    print(f"No message in response from LLM with this text: {text}")
+                    return text
+                elif not response.choices[0].message.content:
+                    print(f"No content in response from LLM with this text: {text}")
+                    return text
                 return response.choices[0].message.content.strip()
 
             except Exception as e:
                 print(f"Polishing error: {e}")
+                print("Full traceback:")
+                print(traceback.format_exc())
                 return text
         else: #pydentic model   
             try:
@@ -100,6 +111,8 @@ class SlidePolisher(PowerpointPipeline):
                     print(f"ERROR We use Pydentic, therefore the model must support json output (e.g., gpt-4-turbo-preview)| Translation error: {e}")
                 else:
                     print(f"Polishing error: {e}")    
+                    print("Full traceback:")
+                    print(traceback.format_exc())
                 return text
 
     def create_maping(self, text_elements: List[ET.Element], original_text_elements: set) -> dict:
@@ -107,7 +120,7 @@ class SlidePolisher(PowerpointPipeline):
         polish_mapping = {text: "" for text in original_text_elements}
         
         for element in text_elements:
-            original_text = element.text.strip()
+            original_text = element.text.strip() if element.text else ""
             print(f"\tLLM fed text: {original_text}")
             if original_text:
                 polished_text = self.polish_text(original_text)
@@ -141,6 +154,8 @@ class SlidePolisher(PowerpointPipeline):
                             
                 except Exception as e:
                     print(f"\tError matching segments: {e}")
+                    print("Full traceback:")
+                    print(traceback.format_exc())
         
         print(f"\tMapping: {polish_mapping}")
         return polish_mapping
@@ -187,7 +202,7 @@ class SlidePolisher(PowerpointPipeline):
                             element.text = leading_space + polished_text.strip() + trailing_space
 
                         else:
-                            # Find the parent run ('a:r') element and remove it
+                            # Find the parent run ('a:r') element and remove it 
                             parent_run = element.getparent()
                             if parent_run is not None:
                                 parent_paragraph = parent_run.getparent()

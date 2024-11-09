@@ -3,6 +3,7 @@ from ..core.base_class import PowerpointPipeline
 from .translator_pipeline import PowerPointTranslator
 from .polisher_pipeline import PowerPointPolisher
 from ..utils.path_manager import PathManager
+import traceback
 
 class TestPipeline(PowerpointPipeline):
     def __init__(self, path_manager: PathManager, verbose: bool=False):
@@ -20,12 +21,12 @@ class TestPipeline(PowerpointPipeline):
                 print(f"Starting translation pipeline for: {self.paths.input_file}")
                 print(f"Target language: {self.target_language}")
 
-            # Extract PPTX
-            if self.verbose:
-                print("\nExtracting PPTX...")
-            self.extract_pptx()
+            # # Extract PPTX
+            # if self.verbose:
+            #     print("\nExtracting PPTX...")
+            # self.extract_pptx()
 
-            # Translate slides
+
             if self.verbose:
                 print("\nTranslating slides...")
             self.translator.translate_presentation()
@@ -36,4 +37,6 @@ class TestPipeline(PowerpointPipeline):
 
         except Exception as e:
             print(f"Error in pipeline: {str(e)}")
+            print("Full traceback:")
+            print(traceback.format_exc())
             return False

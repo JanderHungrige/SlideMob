@@ -28,9 +28,11 @@ class PowerPointPolisher(PowerpointPipeline):
             # Compose final PPTX
             # output_path = os.path.join(self.output_folder, self.output_pptx_name)
             # self.transformer.compose_pptx(self.extract_path, output_path)
-            self.compose_pptx()
+            self.compose_pptx(self.extract_path, self.output_folder)
             return True
             
         except Exception as e:
             print(f"Error polishing presentation: {e}")
+            print("Full traceback:")
+            print(traceback.format_exc())
             return False

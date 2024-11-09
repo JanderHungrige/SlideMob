@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 from ..utils.path_manager import PathManager, get_initial_config_path
 import zipfile
 dotenv.load_dotenv()
+import traceback
 
 
 class PowerpointPipeline:
@@ -34,6 +35,7 @@ class PowerpointPipeline:
         self.pptx_path = self.config["pptx_name"]
         self.extract_path = self.config["extract_folder"]
         self.output_folder = self.config["output_folder"]
+        self.output_pptx = self.config["output_pptx"]
         self.target_language = self.config["target_language"]
      
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -168,11 +170,19 @@ class PowerpointPipeline:
 
     def compose_pptx(self, source_path: str, output_pptx: str):
         """Compose a PPTX file from a directory containing the XML structure."""
-        os.makedirs(os.path.dirname(output_pptx), exist_ok=True)
-        
-        with zipfile.ZipFile(output_pptx, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
-            for root, _, files in os.walk(source_path):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, source_path)
-                    zf.write(file_path, arcname)
+        self.extract_path
+
+        os.makedirs(os.path.dirname(self.output_pptx), exist_ok=True)
+        try:
+            with zipfile.ZipFile(output_pptx, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+                for root, _, files in os.walk(source_path):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, source_path)
+                        zf.write(file_path, arcname)
+        except Exception as e:
+            print(f"Error composing PPTX: {e}")
+            print("Full traceback:")
+            print(traceback.format_exc())
+            return False
+        return True

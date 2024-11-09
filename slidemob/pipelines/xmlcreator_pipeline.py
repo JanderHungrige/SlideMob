@@ -1,4 +1,5 @@
 from ..core.base_class import PowerpointPipeline
+import traceback
 
 class XMLcreator(PowerpointPipeline):
     def __init__(self, verbose: bool=False):
@@ -14,4 +15,6 @@ class XMLcreator(PowerpointPipeline):
         
         except Exception as e:
             print(f"Error translating presentation: {e}")
+            print("Full traceback:")
+            print(traceback.format_exc())
             return False

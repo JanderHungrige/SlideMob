@@ -6,7 +6,7 @@ from langdetect import detect
 from typing import List
 from .base_class import PowerpointPipeline
 import os
-
+import traceback
 class TranslationResponse(BaseModel):
     translation: str
 
@@ -56,11 +56,23 @@ class SlideTranslator(PowerpointPipeline):
                     ],
                     temperature=0.3,
                 )
+                if not response.choices[0]:
+                    print(f"No response from LLM with this text: {text}")
+                    return text
+                elif not response.choices[0].message:
+                    print(f"No message in response from LLM with this text: {text}")
+                    return text
+                elif not response.choices[0].message.content:
+                    print(f"No content in response from LLM with this text: {text}")
+                    return text
                 return response.choices[0].message.content.strip()
 
             except Exception as e:
                 print(f"Translation error: {e}")
+                print("Full traceback:")
+                print(traceback.format_exc())
                 return text
+            
         else: #pydentic model   
             try:
                 response = self.client.chat.completions.create(
@@ -100,7 +112,9 @@ class SlideTranslator(PowerpointPipeline):
                 if "Error code: 400" in str(e):
                     print(f"ERROR We use Pydentic, therefore the model must support json output (e.g. gpt-4-turbo-preview)| Translation error: {e}")
                 else:
-                    print(f"Translation error: {e}")    
+                    print(f"Translation error: {e}")  
+                    print("Full traceback:")
+                    print(traceback.format_exc())  
                 return text
 
     def create_translation_map(self, text_elements: List[ET.Element], original_text_elements: set) -> dict:
@@ -143,6 +157,8 @@ class SlideTranslator(PowerpointPipeline):
                             
                 except Exception as e:
                     print(f"\tError matching segments: {e}")
+                    print("Full traceback:")
+                    print(traceback.format_exc())
         
         print(f"\tTranslation map: {translation_map}")
         return translation_map
@@ -157,6 +173,8 @@ class SlideTranslator(PowerpointPipeline):
             return pptx_lang
         except Exception as e:
             print(f"\tLanguage detection error: {e}")
+            print("Full traceback:")
+            print(traceback.format_exc())
             return "en-US"  # default to en-US on error    
 
     def process_slides(self, folder_path: str):
@@ -211,7 +229,7 @@ class SlideTranslator(PowerpointPipeline):
                 # Detect and update language
                 for run in root.findall('.//a:r', self.namespaces):
                     text_elem = run.find('a:t', self.namespaces)
-                    if text_elem is not None:
+                    if text_elem.text is not None:
                         detected_lang = self.detect_pptx_language(text_elem.text.strip())
                         # Find and update the language attribute in the corresponding rPr element
                         #parent_run = text_elem.getparent()

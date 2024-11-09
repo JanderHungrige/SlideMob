@@ -17,6 +17,7 @@ class PathManager:
         # Derived paths
         self.extracted_dir = os.path.join(self.working_dir, "extracted_pptx")
         self.output_dir = os.path.join(self.working_dir, "output")
+        self.output_pptx=os.path.join(self.output_dir, f"translated_{os.path.basename(input_file)}")
 
     def get_config_path(self) -> str:
         return os.path.join(self.project_root, "config.json")

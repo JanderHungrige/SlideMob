@@ -9,6 +9,7 @@ def create_config(path_manager: PathManager, target_language: str = "English"):
         "working_dir": path_manager.working_dir,
         "extract_folder": path_manager.extracted_dir,
         "output_folder": path_manager.output_dir,
+        "output_pptx": path_manager.output_pptx,
         "target_language": target_language
     }
     
