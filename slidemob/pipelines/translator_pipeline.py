@@ -3,6 +3,7 @@ from ..core.translator import SlideTranslator
 from ..utils.path_manager import PathManager
 import os
 import traceback
+
 class PowerPointTranslator(PowerpointPipeline):
     def __init__(self, target_language:str, Further_StyleInstructions:str="None", fresh_extract:bool=True, verbose:bool=False):
         super().__init__(),
