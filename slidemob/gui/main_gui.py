@@ -3,6 +3,8 @@ from tkinter import ttk, filedialog, messagebox
 import json
 import os
 import logging
+from ttkthemes import ThemedStyle  # You'll need to install ttkthemes
+
 
 from ..core.base_class import PowerpointPipeline
 from ..pipelines.translator_pipeline import PowerPointTranslator
@@ -16,7 +18,8 @@ class SlideMobGUI(PowerpointPipeline):
         super().__init__()
         self.root = root
         self.root.title("SlideMob PowerPoint Processor")
-        self.root.geometry("800x600")
+        self.root.geometry("700x750")
+        
         
         # GUI Variables (StringVar)
         self.gui_pptx_path = tk.StringVar()
@@ -31,7 +34,8 @@ class SlideMobGUI(PowerpointPipeline):
         # Checkboxes
         self.extract_var = tk.BooleanVar(value=True)
         self.polish_var = tk.BooleanVar(value=False)
-        self.translate_var = tk.BooleanVar(value=False)
+        self.translate_var = tk.BooleanVar(value=True)
+        self.update_language = tk.BooleanVar(value=False)
         
         # Load the logo image
         current_dir = os.path.dirname(__file__)
@@ -44,37 +48,54 @@ class SlideMobGUI(PowerpointPipeline):
         app_logo_path = os.path.abspath(app_logo_path)
         self.app_logo_image = tk.PhotoImage(file=app_logo_path)
 
-
-        # Create a frame to hold both logos at the bottom
-        bottom_frame = ttk.Frame(self.root)
-        bottom_frame.pack(side="bottom", fill="x")
+        # Create a bottom frame matching theme background
+        bottom_frame = tk.Frame(self.root, bg='#464646')  # equilux theme background color
+        bottom_frame.pack(side="bottom", fill="x", pady=(0, 4))
 
         # Add the app logo to the lower left corner
         canvas_width = self.app_logo_image.width() + 8
-        canvas_height = self.app_logo_image.height() + 8  # Base height for both canvases
-        self.app_logo_canvas = tk.Canvas(bottom_frame, width=canvas_width, height=canvas_height)
+        canvas_height = self.app_logo_image.height() + 8
+        self.app_logo_canvas = tk.Canvas(bottom_frame, width=canvas_width, height=canvas_height, 
+                                       highlightthickness=0, bg='#464646')
         self.app_logo_canvas.create_image(
             canvas_width//2,
             canvas_height//2,
             anchor="center",
             image=self.app_logo_image
         )
-        self.app_logo_canvas.pack(side="left")
+        self.app_logo_canvas.pack(side="left", padx=4)
+
+        # Add spacing between logos with matching background
+        tk.Frame(bottom_frame, bg='#464646').pack(side="left", fill="x", expand=True)
 
         # Add the company logo to the lower right corner
         canvas_width = self.company_logo_image.width() + 8
-        self.logo_canvas = tk.Canvas(bottom_frame, width=canvas_width, height=canvas_height)  # Using app_logo height
+        self.logo_canvas = tk.Canvas(bottom_frame, width=canvas_width, height=canvas_height,
+                                   highlightthickness=0, bg='#464646')
         self.logo_canvas.create_image(
             canvas_width//2, 
             canvas_height//2, 
             anchor="center", 
             image=self.company_logo_image
         )
-        self.logo_canvas.pack(side="right")
+        self.logo_canvas.pack(side="right", padx=4)
 
         # Initialize error logging
         setup_error_logging()
         
+        # Add help text descriptions
+        self.help_texts = {
+            "all": """Available Options:
+
+• Extract PPTX: Extracts text content from the PowerPoint file for processing.
+
+• Polish Content: Improves the writing style and formatting of the content.
+
+• Translate Content: Translates the content to the selected target language.
+
+• Update PPTX Language: Updates PowerPoint's internal language settings to match the target language."""
+        }
+
         self.create_widgets()
 
     def _update_pptx_path(self, *args):
@@ -86,13 +107,35 @@ class SlideMobGUI(PowerpointPipeline):
         self.output_path = self.gui_output_path.get()
         
     def create_widgets(self):
+        # Create and configure styles
+        style = ThemedStyle(self.root)
+        style.set_theme('equilux')  # 'clam' theme works better with custom colors
+        # Configure the button style
+        style.configure(
+            'Blue.TButton',
+            background='#0052cc',
+            foreground='white',
+            padding=(10, 5)
+        )
+    
+        style.map('Blue.TButton',
+            background=[
+                ('pressed', '#003d99'), 
+                ('active', '#0052cc'),
+                ('!disabled', '#0052cc')
+            ],
+            foreground=[
+                ('!disabled', 'white'),
+                ('disabled', '#999999')
+            ]
+        )
         # File Selection Frame
         file_frame = ttk.LabelFrame(self.root, text="File Selection", padding=10)
         file_frame.pack(fill="x", padx=10, pady=5)
         
         ttk.Label(file_frame, text="PowerPoint File:").pack(anchor="w")
         ttk.Entry(file_frame, textvariable=self.gui_pptx_path, width=50).pack(side="left", padx=5)
-        ttk.Button(file_frame, text="Browse", command=self.browse_pptx).pack(side="left")
+        ttk.Button(file_frame, text="Browse", command=self.browse_pptx,style='Blue.TButton').pack(side="left")
         
         # Output Selection Frame
         output_frame = ttk.LabelFrame(self.root, text="Output Location", padding=10)
@@ -100,23 +143,33 @@ class SlideMobGUI(PowerpointPipeline):
         
         ttk.Label(output_frame, text="Output Folder:").pack(anchor="w")
         ttk.Entry(output_frame, textvariable=self.gui_output_path, width=50).pack(side="left", padx=5)
-        ttk.Button(output_frame, text="Browse", command=self.browse_output).pack(side="left")
+        ttk.Button(output_frame, text="Browse", command=self.browse_output,style='Blue.TButton').pack(side="left")
         
-        # Options Frame
+        # Options Frame with help button
         options_frame = ttk.LabelFrame(self.root, text="Processing Options", padding=10)
         options_frame.pack(fill="x", padx=10, pady=5)
         
-        # Checkboxes
+        # Create a frame for the help button
+        help_button_frame = ttk.Frame(options_frame)
+        help_button_frame.pack(anchor="e", padx=5, pady=5)
+        ttk.Button(help_button_frame, text="?", width=2, command=lambda: self.show_help("all"), style='Blue.TButton').pack(side="right")
+        
+        # Checkboxes (without individual help buttons)
         ttk.Checkbutton(options_frame, text="Extract PPTX", variable=self.extract_var).pack(anchor="w")
         ttk.Checkbutton(options_frame, text="Polish Content", variable=self.polish_var).pack(anchor="w")
-        ttk.Checkbutton(options_frame, text="Translate Content", variable=self.translate_var).pack(anchor="w")
+        
+        # Translation checkbox frame
+        translate_checkbox_frame = ttk.Frame(options_frame)
+        translate_checkbox_frame.pack(fill="x", anchor="w")
+        ttk.Checkbutton(translate_checkbox_frame, text="Translate Content", variable=self.translate_var).pack(side="left")
+        ttk.Checkbutton(translate_checkbox_frame, text="Update PPTX Language", variable=self.update_language).pack(side="left", padx=(20, 0))
         
         # Translation Options
         translation_frame = ttk.Frame(options_frame)
         translation_frame.pack(fill="x", pady=5)
         
         ttk.Label(translation_frame, text="Target Language:").pack(side="left")
-        languages = ["English", "German", "French", "Spanish", "Italian", "Chinese", "Japanese"]
+        languages = ["English", "German", "French", "Spanish", "Italian", "Chinese", "Japanese", "Russian","Portuguese","Dutch","Polish"]
         language_dropdown = ttk.Combobox(translation_frame, textvariable=self.gui_target_language, values=languages)
         language_dropdown.pack(side="left", padx=5)
         
@@ -129,7 +182,7 @@ class SlideMobGUI(PowerpointPipeline):
         style_entry.pack(fill="x", pady=5)
         
         # Process Button
-        ttk.Button(self.root, text="Process PowerPoint", command=self.process_presentation).pack(pady=20)
+        ttk.Button(self.root, text="Process PowerPoint", command=self.process_presentation,style='Blue.TButton').pack(pady=20)
         
         # Progress
         self.progress = ttk.Progressbar(self.root, mode='determinate')
@@ -211,6 +264,7 @@ class SlideMobGUI(PowerpointPipeline):
                 translator = PowerPointTranslator(
                     target_language=self.gui_target_language.get(),
                     Further_StyleInstructions=self.gui_style_instructions.get(),
+                    update_language=self.update_language.get(),
                     fresh_extract=not (self.extract_var.get() or self.polish_var.get())
                 )
                 success = translator.translate_presentation()
@@ -228,6 +282,9 @@ class SlideMobGUI(PowerpointPipeline):
             messagebox.showerror("Error", f"An error occurred: {str(e)}\nCheck error_logs folder for details.")
             logging.exception("Error in process_presentation")
             raise e
+
+    def show_help(self, help_key):
+        messagebox.showinfo("Processing Options Help", self.help_texts[help_key])
 
 if __name__ == "__main__":
     root = tk.Tk()

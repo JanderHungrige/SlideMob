@@ -13,12 +13,14 @@ class TranslationResponse(BaseModel):
 class SlideTranslator(PowerpointPipeline):
     def __init__(self, 
                  target_language: str,
-                 Further_StyleInstructions: str = ""): 
+                 Further_StyleInstructions: str = "",
+                 update_language: bool = False): 
 
         super().__init__()
 
         self.target_language = target_language
         self.Further_StyleInstructions = Further_StyleInstructions
+        self.update_language = update_language
         # Load language codes mapping
         with open("config_languages.json", "r") as f:
             self.language_codes = json.load(f)
@@ -165,6 +167,17 @@ class SlideTranslator(PowerpointPipeline):
 
     def detect_pptx_language(self, text: str) -> str:
         """Detect language and return PowerPoint language code."""
+        # Handle empty or whitespace-only text
+        if not text or text.isspace():
+            return "en-US"
+        
+        # Remove leading/trailing whitespace
+        text = text.strip()
+        
+        # Check if text is only numbers, punctuation, or special characters
+        if all(char.isdigit() or char in '.,!?;:+-*/=()[]{}%$#@&' for char in text):
+            return "en-US"
+        
         try:
             # Detect language
             detected_lang = detect(text)
@@ -175,7 +188,7 @@ class SlideTranslator(PowerpointPipeline):
             print(f"\tLanguage detection error: {e}")
             print("Full traceback:")
             print(traceback.format_exc())
-            return "en-US"  # default to en-US on error    
+            return "en-US"  # default to en-US on error
 
     def process_slides(self, folder_path: str):
         """Main function to process all slides in the presentation."""
@@ -226,17 +239,21 @@ class SlideTranslator(PowerpointPipeline):
                                 if parent_paragraph is not None:
                                     parent_paragraph.remove(parent_run)
 
-                # Detect and update language
-                for run in root.findall('.//a:r', self.namespaces):
-                    text_elem = run.find('a:t', self.namespaces)
-                    if text_elem.text is not None:
-                        detected_lang = self.detect_pptx_language(text_elem.text.strip())
-                        # Find and update the language attribute in the corresponding rPr element
-                        #parent_run = text_elem.getparent()
-                        rPr = run.find('a:rPr', self.namespaces)
-                        if rPr is not None:
-                            rPr.set('lang', detected_lang)
-                            print(f"\tUpdated language for '{translation.strip()}' to {detected_lang}")
+                if self.update_language:
+                    # Detect and update language
+                    for run in root.findall('.//a:r', self.namespaces):
+                        text_elem = run.find('a:t', self.namespaces)
+                        if text_elem.text is not None:
+                            try:
+                                detected_lang = self.detect_pptx_language(text_elem.text.strip())
+                                # Find and update the language attribute in the corresponding rPr element
+                                #parent_run = text_elem.getparent()
+                                rPr = run.find('a:rPr', self.namespaces)
+                                if rPr is not None:
+                                    rPr.set('lang', detected_lang)
+                                    print(f"\tUpdated language for '{translation.strip()}' to {detected_lang}")
+                            except Exception:
+                                continue
                         # else:
                         #     # Create rPr element if it doesn't exist
                         #     rPr = ET.SubElement(run, f"{{{self.namespaces['a']}}}rPr")
