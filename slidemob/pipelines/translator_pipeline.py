@@ -5,13 +5,13 @@ import os
 import traceback
 
 class PowerPointTranslator(PowerpointPipeline):
-    def __init__(self, target_language:str, Further_StyleInstructions:str="None", fresh_extract:bool=True, verbose:bool=False):
+    def __init__(self, target_language:str, Further_StyleInstructions:str="None", update_language:bool=False, fresh_extract:bool=True, verbose:bool=False):
         super().__init__(),
         self.fresh_extract = fresh_extract
         self.verbose = verbose
 
         # Initialize transformer and translator
-        self.translator = SlideTranslator(target_language, Further_StyleInstructions,)
+        self.translator = SlideTranslator(target_language, Further_StyleInstructions, update_language)
 
     def translate_presentation(self):
         """Main method to handle the full translation process"""

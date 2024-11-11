@@ -1,6 +1,10 @@
-python-dotenv
-openai
-pydantic
-spellchecker
-langdetect
-tkinter
+python-dotenv>=1.0.0
+python-pptx>=0.6.21
+openai>=1.3.0
+pydantic>=2.0.0
+spellchecker>=0.0.19
+langdetect>=1.0.9
+ttkthemes>=3.2.2
+typing-extensions>=4.0.0
+zipfile36>=0.1.3
+shutil-extra>=0.1.0
