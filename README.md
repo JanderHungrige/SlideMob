@@ -36,7 +36,6 @@ Pro tip: If you are using conda, always make sure to install all conda dependenc
 ## Usage
 
 
-
 ###GUI:
 
 in your the Terminal cd into the slidemob folder and run:
@@ -96,9 +95,10 @@ Right now it is "Testpptx/CV_Jan_Werth_DE_2024-10-23.pptx" as this file does sti
 
 ## ToDos
 
+- Even though errors are throughn, it says "succsessfully translated" which is false
 - create installable exe
 - extensive tests
-- Bug updateing language setting. The Languagedetector langdetect does get some values at some point he cannot work with. So far skipping did not work, probably not skipt far enough ;-)
+- Bug updateing language setting. The Languagedetector langdetect does get some values at some point he cannot work with. So far skipping did not work, probably not skipt far enough ;-!
 - Add a feature to run all features after each other and create one finished and translated file.
 - Add a separate Gui field for translation style additions.
 - Add a way to add languages to the config file via an option "custom languages" in the dropdown menu.
