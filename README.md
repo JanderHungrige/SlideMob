@@ -18,43 +18,43 @@ SlideMob is a Python-based tool for automated PowerPoint presentation translatio
 
 1. Clone the repository
 ### Using Poetry
-    2. Install Poetry (if not already installed):
-    ```bash
-    pip install poetry
-    ```
-    3. Install dependencies:
-    ```bash
-    poetry install
-    ```
-    4. Activate the Poetry shell:
-    ```bash
-    poetry shell
-    ```
+2. Install Poetry (if not already installed):
+```bash
+pip install poetry
+```
+3. Install dependencies:
+```bash
+poetry install
+```
+4. Activate the Poetry shell:
+```bash
+poetry shell
+```
 ### or using pip
-    First set up an enviroment
+First set up an enviroment
     
 #### Python virtual environment
-    ```bash
-        python -m venv slidemob_env
-    ```
-        # Activate the environment
-        # On Windows:
-    ```bash
-        slidemod_env\Scripts\activate
-    ```    
-        # On macOS and Linux:
+```bash
+    python -m venv slidemob_env
+```
+Activate the environment
+On Windows:
+```bash
+    slidemod_env\Scripts\activate
+```    
+On macOS and Linux:
 
-    ```bash
-        source slidemob_env/bin/activate
-    ```
+```bash
+    source slidemob_env/bin/activate
+```
 #### Or create a conda environment
-    ```bash
-    conda create -n slidemob_env python=3.11
-    ```
+```bash
+conda create -n slidemob_env python=3.11
+```
 
-    Then install the dependencies with pip
-    ```bash
-    pip install -r requirements.txt
+Then install the dependencies with pip
+```bash
+pip install -r requirements.txt
 ```
 
 You can aslo use conda by setting up your environment an then install all the dependencies via pip. 
@@ -63,7 +63,7 @@ Pro tip: If you are using conda, always make sure to install all conda dependenc
 
 ## Usage
 
-###GUI:
+### GUI:
 
 in your the Terminal cd into the slidemob folder and run:
 ```bash
@@ -76,13 +76,11 @@ At this moment, for each part, the xml is separattely created. This means, that,
 
 If you run translate with the same language as the original text, then, it seems that spelling errors are corrected. But be aware, LLMs can always halucinate and might change the meaning of the text.
 
-ToDo: Add a feature to run all features after each other and create one finished and translated file.
-
-## Supported Languages
+Supported Languages:
 As we are using the OpenAI API, you can use any language that is supported by the API. However in the GUI you can only select languages that we put into the config file. If you miss any particular language, you can add it there.
 ToDo: Add a way to add languages to the config file via an option "custom languages" in the dropdown menu.
 
-####Configuration
+#### Configuration
 
 You can add any further instruction to the LLM calls via the field "Additional Style instructions" in the GUI.
 Those will be added to the prompt, while the original text is always placed at the end of the prompt.
@@ -93,10 +91,7 @@ You can customize the translation behavior through configuration files:
 - Technical term preservation rules
 - Output formatting preferences
 
-ToDo: Add a separate Gui field for translation style additions.
-
-
-###CLI:
+### CLI:
 
 You can run the code also in python to better controll the process, and check for errors etc.
 
@@ -105,13 +100,14 @@ Run the code in the terminal with
 python main.py --testing
 ```
 Optional arguments are:
+
 --input
-Path to the input PPTX file (default: uses test presentation if in testing mode)
+- Path to the input PPTX file (default: uses test presentation if in testing mode)
     
 --language
-default='English',
-choices=['German', 'French', 'Spanish', 'Italian','English']
-Target language for translation
+- default= English
+- choices=German, French, Spanish, Italian, English
+- Target language for translation
 
 -h or --help
 
