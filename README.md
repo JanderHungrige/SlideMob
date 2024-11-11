@@ -17,16 +17,44 @@ SlideMob is a Python-based tool for automated PowerPoint presentation translatio
 ## Installation
 
 1. Clone the repository
-2. Install dependencies using Poetry:
+### Using Poetry
+    2. Install Poetry (if not already installed):
+    ```bash
+    pip install poetry
+    ```
+    3. Install dependencies:
+    ```bash
+    poetry install
+    ```
+    4. Activate the Poetry shell:
+    ```bash
+    poetry shell
+    ```
+### or using pip
+    First set up an enviroment
+    
+#### Python virtual environment
+    ```bash
+        python -m venv slidemob_env
+    ```
+        # Activate the environment
+        # On Windows:
+    ```bash
+        slidemod_env\Scripts\activate
+    ```    
+        # On macOS and Linux:
 
-```bash
-poetry install
-```     
+    ```bash
+        source slidemob_env/bin/activate
+    ```
+#### Or create a conda environment
+    ```bash
+    conda create -n slidemob_env python=3.11
+    ```
 
-or using pip:
-
-```bash
-pip install -r requirements.txt
+    Then install the dependencies with pip
+    ```bash
+    pip install -r requirements.txt
 ```
 
 You can aslo use conda by setting up your environment an then install all the dependencies via pip. 
@@ -34,7 +62,6 @@ Pro tip: If you are using conda, always make sure to install all conda dependenc
 
 
 ## Usage
-
 
 ###GUI:
 
@@ -95,12 +122,18 @@ Right now it is "Testpptx/CV_Jan_Werth_DE_2024-10-23.pptx" as this file does sti
 
 ## ToDos
 
+### Bugfixes
 - Even though errors are throughn, it says "succsessfully translated" which is false
-- create installable exe
-- extensive tests
+- Change save folder, as it still generates an output folder first into the choosen location
 - Bug updateing language setting. The Languagedetector langdetect does get some values at some point he cannot work with. So far skipping did not work, probably not skipt far enough ;-!
+- Add a separate Gui field for translation style additions. Ottherwise this might be confusing, as internally there are two names, but now only one is used. So When adding nfo to the prompt, it will be only used in polishing or translation right now (don't know which one out of my head)
+
+### Features
+- extensive tests
+- create installable exe
+- Add otion to create a folder in the output location
+- Add option to change the name of the output file
 - Add a feature to run all features after each other and create one finished and translated file.
-- Add a separate Gui field for translation style additions.
 - Add a way to add languages to the config file via an option "custom languages" in the dropdown menu.
 
 ## License
