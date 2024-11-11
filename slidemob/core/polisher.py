@@ -23,13 +23,13 @@ class SlidePolisher(PowerpointPipeline):
 
     def polish_text(self, text: str) -> str:
         """Polsish text while preserving approximate length and formatting."""
-        prompt = f"""Polish and improve the text following this instructions: 
+        prompt = f"""Polish and improve the text strictly following this instructions: 
         IMPORTANT: If the text is already good, just return it as is.
         IMPORTANT: If the text is to short, just return it as is.
         IMPORTANT: For the new text you must not return any other text than the pure polished text.
         Maintain similar total character length and preserve any special formatting or technical terms. 
         Keep technical terms. 
-        Keep role names in the translation (e.g., DataScientist, CEO, etc.).
+        IMPORTANT: Keep company role- and position names in the translation (e.g., Lead, Senior, DataScientist, CEO, etc.).
         Keep names of companies in the translation (e.g., Apple, Microsoft, etc.).
         Keep names of products in the translation (e.g., iPhone, Windows, LegalAI, etc.).
         Make the text sharp, concise and business-like.

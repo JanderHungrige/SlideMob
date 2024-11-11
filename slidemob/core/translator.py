@@ -13,7 +13,7 @@ class TranslationResponse(BaseModel):
 class SlideTranslator(PowerpointPipeline):
     def __init__(self, 
                  target_language: str,
-                 Further_StyleInstructions: str = "",
+                 Further_StyleInstructions: str = "None",
                  update_language: bool = False): 
 
         super().__init__()
@@ -25,29 +25,43 @@ class SlideTranslator(PowerpointPipeline):
         with open("config_languages.json", "r") as f:
             self.language_codes = json.load(f)
 
-        if self.Further_StyleInstructions != "":
+        if self.Further_StyleInstructions != "None":
             self.Further_StyleInstructions = f" Here are some further wording style instructions: {self.Further_StyleInstructions}"
         else:
             self.Further_StyleInstructions = ""
 
     def translate_text(self, text: str) -> str:
         """Translate text while preserving approximate length and formatting."""
-        prompt = f"""Translate following this instructions: 
-        Maintain similar total character length and preserve any special formatting or technical terms. 
-        IMPORTANT:For the translation you must not return any other text than the pure translation.
-        Keep technical terms in the translation. 
-        Keep role names in the translation (e.g., DataScientist, CEO, etc.).
-        Keep names of companies in the translation (e.g., Apple, Microsoft, etc.).
-        Keep names of products in the translation (e.g., iPhone, Windows, LegalAI, etc.).
-        Make the translation sharp, concise and business-like.
-        Translate the text to {self.target_language}.
-        {self.Further_StyleInstructions}
-        IMPORTANT:For the translation you must not return any other text than the pure translation.
-        Text to translate: {text}
+        # prompt = f"""Translate following strictly this instructions: 
+        # Maintain similar total character length and preserve any special formatting or technical terms. 
+        # IMPORTANT:For the translation you must not return any other text than the pure translation.
+        # Keep technical terms in the translation. 
+        # Keep company role- and position names in the translation (e.g., Lead, Senior, DataScientist, CEO, etc.).
+        # Keep names of companies in the translation (e.g., Apple, Microsoft, etc.).
+        # Keep names of products in the translation (e.g., iPhone, Windows, LegalAI, etc.).
+        # Make the translation sharp, concise and business-like.
+        # Translate the text to {self.target_language}.
+        # {self.Further_StyleInstructions}
+        # IMPORTANT: You must translate the text to {self.target_language} and no other language.
+        # IMPORTANT:For the translation you must not return any other text than the pure translation.
+        # Text to translate: {text}
+        # """
+        prompt = f"""Translate the following text according to these instructions:
+        - Match the original character length closely.
+        - Preserve special formatting, technical terms, company roles (e.g., Lead, Senior, DataScientist), company names (e.g., Apple, Microsoft), and product names (e.g., iPhone, Windows).
+        - Keep the tone sharp, concise, and business-like.
+        - Translate the text precisely to {self.target_language}
+        - Important: You must not output any other text than the pure translation.
         """
+        promt_text= f" Text to translate: {text}"
+
+        if self.Further_StyleInstructions != "None":
+            prompt += f"\n{self.Further_StyleInstructions} + {promt_text}"
+        else:
+            prompt += f"\n{promt_text}"
 
         pydentic_prompt_addition = f"Respond with a JSON object containing only a 'translation' field with the {self.target_language} translation of this text"
-        
+                
         if self.model == "gpt-4": #non pydentic model
             try:
                 response = self.client.chat.completions.create(

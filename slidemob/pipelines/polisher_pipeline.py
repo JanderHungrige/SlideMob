@@ -1,6 +1,7 @@
 ## Pipeline - Polisher
 from ..core.base_class import PowerpointPipeline
 from ..core.polisher import SlidePolisher
+import traceback
 import os
 
 class PowerPointPolisher(PowerpointPipeline):
@@ -28,7 +29,7 @@ class PowerPointPolisher(PowerpointPipeline):
             # Compose final PPTX
             # output_path = os.path.join(self.output_folder, self.output_pptx_name)
             # self.transformer.compose_pptx(self.extract_path, output_path)
-            self.compose_pptx(self.extract_path, self.output_folder)
+            self.compose_pptx(self.extract_path, self.output_pptx)
             return True
             
         except Exception as e:
