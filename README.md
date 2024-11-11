@@ -2,7 +2,7 @@
 
 SlideMob is a Python-based tool for automated PowerPoint presentation translation using AI. It helps translate presentations while preserving formatting and technical terms.
 
-![SlideMob Logo](./images/doppelfahreimer Small.png)
+![SlideMob Logo](./images/doppelfahreimerSmall.png)
 
 
 ## Features
