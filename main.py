@@ -31,7 +31,7 @@ def main():
     parser.add_argument(
         '--language', 
         type=str, 
-        default='English',
+        default='German',
         choices=['German', 'French', 'Spanish', 'Italian','English'],  # Add your supported languages
         help='Target language for translation (default: %(default)s)'
     )
@@ -44,7 +44,7 @@ def main():
         path_manager = PathManager(input_file)
 
         # Wite the args into the config file
-        config = create_config(
+        create_config(
             path_manager=path_manager,
             target_language=args.language
         )

@@ -5,6 +5,8 @@ import json
 from typing import List
 import os
 import traceback
+
+
 class PolishResponse(BaseModel):
     polished_text: str
 

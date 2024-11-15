@@ -26,14 +26,13 @@ class TestPipeline(PowerpointPipeline):
             #     print("\nExtracting PPTX...")
             # self.extract_pptx()
 
-
             if self.verbose:
                 print("\nTranslating slides...")
-            self.translator.translate_presentation()
+            success = self.translator.translate_presentation()
 
-            if self.verbose:
+            if self.verbose and success:
                 print(f"\nTranslation complete! Output saved to: {self.output_folder}")
-            return True
+            return success
 
         except Exception as e:
             print(f"Error in pipeline: {str(e)}")

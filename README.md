@@ -128,7 +128,9 @@ Right now it is "Testpptx/CV_Jan_Werth_DE_2024-10-23.pptx" as this file does sti
 - extensive tests
 - create installable exe
 - Indicate progress by Slide of Slides
+- Add aboart button
 - SKip if the input text are only numbers or other non-text elements, or Position, Role, Company, Product names
+- add a tool that contains all non transaltion words (time-to-market, etc.)
 - Output terminal output in gui
 - Add otion to create a folder in the output location
 - Add option to change the name of the output file

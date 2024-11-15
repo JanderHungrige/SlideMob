@@ -12,7 +12,7 @@ import traceback
 
 class PowerpointPipeline:
     def __init__(self, 
-                 model: str="gpt-4", 
+                 model: str="gpt-4o", 
                  pydentic_model: str="gpt-4-turbo-preview", 
                  client:str="OpenAI", 
                  verbose: bool=False,
@@ -68,7 +68,7 @@ class PowerpointPipeline:
                     if number_part.isdigit():
                         slide_files.append(os.path.join(root, file))
         return sorted(slide_files)
-        pass
+        
 
     def extract_paragraphs(self, xml_file: str) -> List[ET.Element]:
         """Extract everything inparagraphs from the XML file."""

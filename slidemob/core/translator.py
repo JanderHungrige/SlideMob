@@ -6,7 +6,10 @@ from langdetect import detect
 from typing import List
 from .base_class import PowerpointPipeline
 import os
+import re
 import traceback
+from ..utils.promts import translation_prompt_1
+
 class TranslationResponse(BaseModel):
     translation: str
 
@@ -25,130 +28,137 @@ class SlideTranslator(PowerpointPipeline):
         with open("config_languages.json", "r") as f:
             self.language_codes = json.load(f)
 
-        if self.Further_StyleInstructions != "None":
-            self.Further_StyleInstructions = f" Here are some further wording style instructions: {self.Further_StyleInstructions}"
-        else:
-            self.Further_StyleInstructions = ""
+    def analyze_text(self, text: str) -> str:  # Added self parameter and type hint
+        if not text or text.isspace():
+            return "Unusable"
+            
+        text = text.strip()
+        # Check if empty or just whitespace
+        if not text:
+            return "Unusable"
+            
+        # Check if it's just numbers, basic punctuation, plus/minus signs, and spaces
+        if re.match(r'^[+\-\d\s%.,()]+$', text):
+            return "Unusable"
+            
+        # Check if it's just special characters
+        if re.match(r'^[^a-zA-Z0-9\s]*$', text):
+            return "Unusable"
+        
+        # Check if it's just numbers  and special character(e.g., 10%)
+        if re.match(r'^[\d\s%.,]+$', text):  
+            return "Unusable"
+            
+        # If we get here, the text contains some actual content
+        return "Usable"      
 
     def translate_text(self, text: str) -> str:
+
+        # result = self.analyze_text(text)
+        # if result == "Unusable":
+        #     return text  # Return original text without translation
+        
+
         """Translate text while preserving approximate length and formatting."""
-        # prompt = f"""Translate following strictly this instructions: 
-        # Maintain similar total character length and preserve any special formatting or technical terms. 
-        # IMPORTANT:For the translation you must not return any other text than the pure translation.
-        # Keep technical terms in the translation. 
-        # Keep company role- and position names in the translation (e.g., Lead, Senior, DataScientist, CEO, etc.).
-        # Keep names of companies in the translation (e.g., Apple, Microsoft, etc.).
-        # Keep names of products in the translation (e.g., iPhone, Windows, LegalAI, etc.).
-        # Make the translation sharp, concise and business-like.
-        # Translate the text to {self.target_language}.
-        # {self.Further_StyleInstructions}
-        # IMPORTANT: You must translate the text to {self.target_language} and no other language.
-        # IMPORTANT:For the translation you must not return any other text than the pure translation.
-        # Text to translate: {text}
-        # """
-        prompt = f"""Translate the following text according to these instructions:
-        - Match the original character length closely.
-        - Preserve special formatting, technical terms, company roles (e.g., Lead, Senior, DataScientist), company names (e.g., Apple, Microsoft), and product names (e.g., iPhone, Windows).
-        - Keep the tone sharp, concise, and business-like.
-        - Translate the text precisely to {self.target_language}
-        - Important: You must not output any other text than the pure translation.
-        """
-        promt_text= f" Text to translate: {text}"
-
-        if self.Further_StyleInstructions != "None":
-            prompt += f"\n{self.Further_StyleInstructions} + {promt_text}"
-        else:
-            prompt += f"\n{promt_text}"
-
-        pydentic_prompt_addition = f"Respond with a JSON object containing only a 'translation' field with the {self.target_language} translation of this text"
+        prompt = translation_prompt_1(text, self.target_language, self.Further_StyleInstructions)
                 
-        if self.model == "gpt-4": #non pydentic model
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
                     messages=[
                         {"role": "system", "content": "You are a professional translator."},
                         {"role": "user", "content": prompt}
                     ],
-                    temperature=0.3,
+                    temperature=0.3
                 )
-                if not response.choices[0]:
-                    print(f"No response from LLM with this text: {text}")
-                    return text
-                elif not response.choices[0].message:
-                    print(f"No message in response from LLM with this text: {text}")
-                    return text
-                elif not response.choices[0].message.content:
-                    print(f"No content in response from LLM with this text: {text}")
-                    return text
-                return response.choices[0].message.content.strip()
-
-            except Exception as e:
-                print(f"Translation error: {e}")
-                print("Full traceback:")
-                print(traceback.format_exc())
-                return text
-            
-        else: #pydentic model   
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": "You are a professional translator."},
-                        {"role": "user", "content": prompt + pydentic_prompt_addition}
-                    ],
-                    tools=[{
-                    "type": "function",
-                    "function": {
-                        "name": "format_translation_text",
-                        "description": "Format the translation text as JSON",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "translation": {
-                                    "type": "string",
-                                    "description": "The translation of the input text"
-                                }
-                            },
-                            "required": ["translation"]
-                        }
-                        }
-                    }],
-                    tool_choice={"type": "function", "function": {"name": "format_translation_text"}},
                 
-                    temperature=0.3,
-                    response_format={ "type": "json_object" }
-                )
-                translation_response = TranslationResponse.model_validate_json(
-                    response.choices[0].message.content
-                )
-                return translation_response.translation.strip()
-    
+                # if not response.choices[0]:
+                #     print(f"No response from LLM with this text: {text}")
+                #     return text
+                # elif not response.choices[0].message:
+                #     print(f"No message in response from LLM with this text: {text}")
+                #     return text
+                # elif not response.choices[0].message.content:
+                #     print(f"No content in response from LLM with this text: {text}")
+                #     return text
+                # return response.choices[0].message.content.strip()
+            try:
+                content = response.choices[0].message.content.strip()
+                # Extract text between <translation> tags
+                translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
+                if translation_match:
+                    return translation_match.group(1).strip()
+                return content  # Fallback to full content if tags not found
             except Exception as e:
-                if "Error code: 400" in str(e):
-                    print(f"ERROR We use Pydentic, therefore the model must support json output (e.g. gpt-4-turbo-preview)| Translation error: {e}")
-                else:
-                    print(f"Translation error: {e}")  
-                    print("Full traceback:")
-                    print(traceback.format_exc())  
-                return text
+                print(f"Response.strip() error: {e} for text: {text} with result {response.choices[0].message.content}")
+                print("Full traceback:")
+                print(traceback.format_exc())        
+        except Exception as e:
+            print(f"Translation error: {e}")
+            print("Full traceback:")
+            print(traceback.format_exc())
+
+            
+        # else: #pydentic model   
+        #     try:
+        #         response = self.client.chat.completions.create(
+        #             model=self.model,
+        #             messages=[
+        #                 {"role": "system", "content": "You are a professional translator."},
+        #                 {"role": "user", "content": prompt + pydentic_prompt_addition}
+        #             ],
+        #             tools=[{
+        #             "type": "function",
+        #             "function": {
+        #                 "name": "format_translation_text",
+        #                 "description": "Format the translation text as JSON",
+        #                 "parameters": {
+        #                     "type": "object",
+        #                     "properties": {
+        #                         "translation": {
+        #                             "type": "string",
+        #                             "description": "The translation of the input text"
+        #                         }
+        #                     },
+        #                     "required": ["translation"]
+        #                 }
+        #                 }
+        #             }],
+        #             tool_choice={"type": "function", "function": {"name": "format_translation_text"}},
+                
+        #             temperature=0.3,
+        #             response_format={ "type": "json_object" }
+        #         )
+                # translation_response = TranslationResponse.model_validate_json(
+                #     response.choices[0].message.content
+                # )
+            #     return translation_response.translation.strip()
+    
+            # except Exception as e:
+            #     if "Error code: 400" in str(e):
+            #         print(f"ERROR We use Pydentic, therefore the model must support json output (e.g. gpt-4-turbo-preview)| Translation error: {e}")
+            #     else:
+            #         print(f"Translation error: {e}")  
+            #         print("Full traceback:")
+            #         print(traceback.format_exc())  
+            #     return text
 
     def create_translation_map(self, text_elements: List[ET.Element], original_text_elements: set) -> dict:
         """Create a mapping between original text and their translations."""
         translation_map = {text: "" for text in original_text_elements}
         
         for element in text_elements:
-            original_text = element.text.strip()
+            self.original_text = element.text.strip()
             source_lang = element.get('lang', 'en-GB')
-            print(f"\tLLM fed text: {original_text}")
-            if original_text:
-                translated_text = self.translate_text(original_text)
-                print(f"\tOriginal paragraph: {original_text}")
+            #print(f"\tLLM fed text: {original_text}")
+            if self.original_text:
+                translated_text = self.translate_text(self.original_text)
+                print(f"\tOriginal paragraph: {self.original_text}")
                 print(f"\tTranslated paragraph: {translated_text}\n")
                 
                 prompt = f"""Match each original text segment with its corresponding part from the translation.
                 Original segments: {[text for text in original_text_elements]}
-                Full original text: {original_text}
+                Full original text: {self.original_text}
                 Full translation: {translated_text}
                 
                 Return a JSON object where keys are the original segments and values are their corresponding translations.
@@ -207,8 +217,12 @@ class SlideTranslator(PowerpointPipeline):
     def process_slides(self, folder_path: str):
         """Main function to process all slides in the presentation."""
         slide_files = self.find_slide_files(folder_path)
-        
-        for slide_file in slide_files:
+        selected_slides = ["slide2.xml", "slide3.xml", "slide4.xml"]
+
+        for slide_file in sorted(slide_files):
+            if os.path.basename(slide_file) not in selected_slides:
+                continue
+
             print(f"\nProcessing {os.path.basename(slide_file)}...")
             print(f"Processing slide {slide_files.index(slide_file) + 1} of {len(slide_files)}...")
             
@@ -225,7 +239,7 @@ class SlideTranslator(PowerpointPipeline):
             
             # Extract and create translation mapping
             text_elements, original_text_elements = self.extract_text_runs(slide_file)
-            translation_map = self.create_translation_map(text_elements, original_text_elements)
+            translation_map = self.create_translation_map(text_elements, original_text_elements) # FYI: in here there is also the translation happening
             
             # Update text while preserving XML structure and whitespace
             for original_text, translation in translation_map.items():
