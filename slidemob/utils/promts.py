@@ -1,3 +1,19 @@
+def translation_prompt_0(text, target_language, Further_StyleInstructions):
+    return f"""Translate following this instructions: 
+    Maintain similar total character length and preserve any special formatting or technical terms. 
+    IMPORTANT:For the translation you must not return any other text than the pure translation.
+    Keep technical terms in the translation. 
+    Keep role names in the translation (e.g., DataScientist, CEO, etc.).
+    Keep names of companies in the translation (e.g., Apple, Microsoft, etc.).
+    Keep names of products in the translation (e.g., iPhone, Windows, LegalAI, etc.).
+    Make the translation sharp, concise and business-like.
+    Translate the text to {target_language}.
+    {Further_StyleInstructions}
+    IMPORTANT:For the translation you must not return any other text than the pure translation.
+    Text to translate: {text}
+    """
+
+
 def translation_prompt_1(text, target_language, Further_StyleInstructions):
     return f"""
 You are a professional translator tasked with accurately translating text while adhering to specific guidelines. Your goal is to provide a high-quality translation that meets all the given requirements.

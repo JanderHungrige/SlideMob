@@ -8,7 +8,7 @@ from .base_class import PowerpointPipeline
 import os
 import re
 import traceback
-from ..utils.promts import translation_prompt_1
+from ..utils.promts import translation_prompt_0, translation_prompt_1
 
 class TranslationResponse(BaseModel):
     translation: str
@@ -60,14 +60,16 @@ class SlideTranslator(PowerpointPipeline):
         
 
         """Translate text while preserving approximate length and formatting."""
-        prompt = translation_prompt_1(text, self.target_language, self.Further_StyleInstructions)
+        chosen_prompt=0
+        prompt_0 = translation_prompt_0(text, self.target_language, self.Further_StyleInstructions)
+        prompt_1 = translation_prompt_1(text, self.target_language, self.Further_StyleInstructions)
                 
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                     messages=[
                         {"role": "system", "content": "You are a professional translator."},
-                        {"role": "user", "content": prompt}
+                        {"role": "user", "content": prompt_0}
                     ],
                     temperature=0.3
                 )
@@ -83,12 +85,16 @@ class SlideTranslator(PowerpointPipeline):
                 #     return text
                 # return response.choices[0].message.content.strip()
             try:
-                content = response.choices[0].message.content.strip()
-                # Extract text between <translation> tags
-                translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
-                if translation_match:
-                    return translation_match.group(1).strip()
-                return content  # Fallback to full content if tags not found
+                if chosen_prompt==0:
+                    return response.choices[0].message.content.strip()
+                
+                if chosen_prompt==1:
+                    content = response.choices[0].message.content.strip()
+                    # Extract text between <translation> tags
+                    translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
+                    if translation_match:
+                        return translation_match.group(1).strip()
+
             except Exception as e:
                 print(f"Response.strip() error: {e} for text: {text} with result {response.choices[0].message.content}")
                 print("Full traceback:")
