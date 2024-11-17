@@ -224,10 +224,12 @@ class SlideTranslator(PowerpointPipeline):
         """Main function to process all slides in the presentation."""
         slide_files = self.find_slide_files(folder_path)
         selected_slides = ["slide2.xml", "slide3.xml", "slide4.xml"]
+        reduce_slides = False
 
         for slide_file in sorted(slide_files):
-            if os.path.basename(slide_file) not in selected_slides:
-                continue
+            if reduce_slides:
+                if os.path.basename(slide_file) not in selected_slides:
+                    continue
 
             print(f"\nProcessing {os.path.basename(slide_file)}...")
             print(f"Processing slide {slide_files.index(slide_file) + 1} of {len(slide_files)}...")
