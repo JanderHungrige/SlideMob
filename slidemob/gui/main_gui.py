@@ -36,6 +36,7 @@ class SlideMobGUI(PowerpointPipeline):
         self.polish_var = tk.BooleanVar(value=False)
         self.translate_var = tk.BooleanVar(value=True)
         self.update_language = tk.BooleanVar(value=False)
+        self.reduce_slides = tk.BooleanVar(value=False)
         
         # Load the logo image
         current_dir = os.path.dirname(__file__)
@@ -163,6 +164,7 @@ class SlideMobGUI(PowerpointPipeline):
         translate_checkbox_frame.pack(fill="x", anchor="w")
         ttk.Checkbutton(translate_checkbox_frame, text="Translate Content", variable=self.translate_var).pack(side="left")
         ttk.Checkbutton(translate_checkbox_frame, text="Update PPTX Language", variable=self.update_language).pack(side="left", padx=(20, 0))
+        ttk.Checkbutton(translate_checkbox_frame, text="Reduce Slides", variable=self.reduce_slides).pack(side="left", padx=(20, 0))
         
         # Translation Options
         translation_frame = ttk.Frame(options_frame)

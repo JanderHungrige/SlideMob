@@ -17,13 +17,15 @@ class SlideTranslator(PowerpointPipeline):
     def __init__(self, 
                  target_language: str,
                  Further_StyleInstructions: str = "None",
-                 update_language: bool = False): 
+                 update_language: bool = False,
+                 reduce_slides: bool = False): 
 
         super().__init__()
 
         self.target_language = target_language
         self.Further_StyleInstructions = Further_StyleInstructions
         self.update_language = update_language
+        self.reduce_slides = reduce_slides
         # Load language codes mapping
         with open("config_languages.json", "r") as f:
             self.language_codes = json.load(f)
@@ -224,7 +226,7 @@ class SlideTranslator(PowerpointPipeline):
         """Main function to process all slides in the presentation."""
         slide_files = self.find_slide_files(folder_path)
         selected_slides = ["slide2.xml", "slide3.xml", "slide4.xml"]
-        reduce_slides = False
+        # reduce_slides = False
 
         for slide_file in sorted(slide_files):
             if reduce_slides:
