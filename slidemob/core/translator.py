@@ -229,7 +229,7 @@ class SlideTranslator(PowerpointPipeline):
         # reduce_slides = False
 
         for slide_file in sorted(slide_files):
-            if reduce_slides:
+            if self.reduce_slides:
                 if os.path.basename(slide_file) not in selected_slides:
                     continue
 
