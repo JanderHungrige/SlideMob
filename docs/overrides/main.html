@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if page.nb_url %}
+  <!-- download button for Jupyter notebooks -->
+  <a href="{{ page.nb_url }}" title="Download Jupyter notebook" class="md-content__button md-icon">
+    {% include ".icons/octicons/download-24.svg" %}
+  </a>
+{% endif %}
+
+{{ super() }}
+{% endblock content %}

@@ -1,0 +1,117 @@
+[project]
+name = "slidemob"
+requires-python = ">=3.11"
+
+[tool.poetry]
+name = "slidemob"
+version = "0.1.0"
+description = "SlideMob interacts with your PPT files and performes actions such as translating without affecting the layout."
+authors = ["Jan Werth"]
+readme = "README.md"
+packages = [{ include = "slidemob", from = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.11"
+
+[tool.poetry.group.dev.dependencies]
+jupytext = "^1.16.1"
+pre-commit = "^3.3.3"
+pyright = "==1.1.365"
+ruff = "==0.3.4"
+types-pyyaml = "^6.0.12.11"
+
+[tool.poetry.group.docs.dependencies]
+mkdocstrings = {extras = ["python"], version = "^0.24.3"}  # API doc generation
+mkdocs-coverage = "1.0.0,!=1.1.0"                          # integrate coverage reports
+mkdocs-gen-files = "^0.5.0"                                # automatic recursive API doc generation
+mkdocs-jupyter = "^0.24.7"                                 # render jupyter notebooks
+mkdocs-literate-nav = "^0.6.1"                             # needed for automatic recursive API doc
+mkdocs-material = "^9.5.18"                                # documentation and theme
+neoteroi-mkdocs = "1.0.5"                                  # docs/stylesheets/neoteroi-mkdocs-plugins-1.0.4.css
+tox = "^4.14.2"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+
+[tool.ruff]
+src = ["src"]  # Point ruff to where to find first-party code
+line-length = 88
+target-version = "py311"
+include = ["*.py", "*.pyi", "**/pyproject.toml"]
+extend-exclude = ["tutorials"]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle
+  "F",   # pyflakes
+  "UP",  # pyupgrade
+  "D",   # pydocstyle
+  "PD",  # pandas-vet
+  "I",   # isort
+  "N",   # pep8-naming
+  "S",   # flake8-bandit
+  "BLE", # flake8-blind-except
+  "FBT", # flake8-boolean-trap
+  "B",   # flake8-bugbear
+  "A",   # flake8-builtins
+  "C4",  # flake8-comprehensions
+  "EM",  # flake8-errmsg
+  "FA",  # flake8-future-annotations
+  "ISC", # flake8-implicit-str-concat
+  "ICN", # flake8-import-conventions
+  "T20", # flake8-print
+  "PT",  # flake8-pytest-style
+  "RET", # flake8-return
+  "SIM", # flake8-simplify
+  "PTH", # flake8-use-pathlib
+  "ERA", # eradicate
+  "PGH", # pygrep-hooks
+  "NPY", # NumPy-specific rules
+  "PERF",# Perflint
+  "RUF", # Ruff-specific rules
+]
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+ignore = [
+  "ISC001" # Ruff warns that this rule may cause conflicts when used with their formatter.
+]
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+  # Avoiding "assert" makes no sense for test cases
+  "S101",
+]
+"**/__init__.py" = [
+  # No need to force docstrings on __init__.py files.
+  "D104",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+testpaths = ["tests"]
+log_cli = "true"
+log_level = "DEBUG"
+
+[tool.jupytext]
+formats = "ipynb,py:percent"
+
+[tool.pyright]
+include = ["src"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

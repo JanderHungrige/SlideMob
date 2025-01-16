@@ -1,0 +1,46 @@
+---
+# Python Docker images are based on Debian or Alpine (or Windows Server Core)
+# - images
+#   - python:3.12-alpine:   python/3.12/alpine3.19, 20MB
+#   - python:3.12-slim:     python/3.12/slim-bookworm, 46MB
+#   - python:3.12-bookworm: python/3.12/bookworm, 363MB
+# - notes
+#   - Debian versions
+#     - bookworm = debian 12 (current "stable" release), initially released on 10 Jun 2023
+#     - bullseye = debian 11 (current "oldstable" release), initially released on 14 Aug 2021
+#   - Alpine 3.18, 3.19
+
+job-ci:
+  # defaults
+  # - machine type: saas-linux-small-amd64
+  # - region: us-east1
+  rules:
+  - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  stage: test
+  image: python:3.12-slim
+  script:
+  # add default binary location for pipx-installed apps
+  # - `pipx ensurepath` only takes effect in new shell
+  - export PATH=/root/.local/bin:$PATH
+
+  - ./scripts/ci/print_system.sh
+  - ./scripts/ci/install_pipx_debian.sh
+  - ./scripts/ci/install_poetry.sh
+  - ./scripts/ci/install_dependencies.sh
+  - ./scripts/ci/print_versions.sh
+  - ./scripts/ci/run_ruff.sh
+  - ./scripts/ci/run_pytest.sh
+
+  # extract and report total coverage
+  # - https://docs.gitlab.com/ee/ci/testing/code_coverage.html
+  # - https://docs.gitlab.com/ee/ci/yaml/index.html#coverage
+  coverage: /TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/
+  artifacts:
+    when: always
+    paths:
+    - junit/test-results.xml
+    reports:
+      junit: junit/test-results.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage-unit.xml

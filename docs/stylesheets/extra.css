@@ -1,0 +1,28 @@
+.md-grid {
+    /* Content area width */
+    /* - https://squidfunk.github.io/mkdocs-material/setup/setting-up-navigation/#content-area-width */
+    max-width: 90%; /* or 100%, if you want to stretch to full-width */
+}
+
+[data-md-color-scheme="eraneos-grey"] {
+    --md-primary-fg-color:        #7F7F7F; /* #A6A6A6 */
+    --md-accent-fg-color:         #FAA61A; /* #CB8004 */
+    --md-footer-bg-color:         #404040;
+}
+
+[data-md-color-scheme="eraneos-orange"] {
+    --md-primary-fg-color:        #FAA61A;
+    --md-accent-fg-color:         #CB8004;
+    --md-footer-bg-color:         #404040;
+}
+
+[data-md-color-scheme="eraneos-blue"] {
+    --md-primary-fg-color:        #0464FF;
+    --md-primary-fg-color--light: #9BC1FF;
+    --md-primary-fg-color--dark:  #003281;
+    /* --md-primary-bg-color:        #404040; */
+    /* --md-primary-bg-color--light: #404040; */
+    --md-accent-fg-color:         #FAA61A;
+    /* --md-footer-bg-color:         #404040; */
+    --md-footer-bg-color:         #003281;
+}

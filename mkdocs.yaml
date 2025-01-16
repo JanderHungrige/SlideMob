@@ -1,0 +1,188 @@
+---
+site_name: SlideMob
+copyright: Copyright &copy; 2025 Jan Werth
+repo_name: slidemob.git
+repo_url: https://gitlab.com/eraneos/de_ea/internal/playground/slidemob.git
+
+# additional files/folders to watch
+# - `mkdocs.yaml` and `docs/` are watched anyways
+watch:
+- CHANGELOG.md
+- README.md
+- src/
+
+nav:
+- Home: index.md
+- Tutorials:
+  - tutorials/index.md
+  - tutorials/1-example-notebook.ipynb
+- API Reference: reference/
+- Changelog: changelog.md
+- Development:
+  - Coverage reports:
+    - Unit tests: coverage-unit.md
+
+theme:
+  name: material
+  language: en  # de, es, fr, nl
+  features:
+  - navigation.instant
+  # - header.autohide  # automatically hide the entire header
+  - navigation.tabs  # top-level sections at the top, right below the header
+  # - navigation.sections  # top-level section in the left sidebar
+  - navigation.footer  # prev/next buttons, quite large by default
+  - navigation.top  # back to top button is shown when starting to scroll up again
+  # - navigation.expand  # all subsections/pages expanded by default in the left sidebar
+  - navigation.indexes  # sections can have integrated (rather than separate) index/landing pages
+  - navigation.tracking  # URL changes when scrolling
+  - toc.follow
+  - search.suggest
+  - search.highlight
+  - content.code.copy  # copy button for code blocks
+  - content.tabs.link  # linking of tab boxes on the same page
+  custom_dir: docs/overrides
+  palette:
+    scheme: eraneos-grey  # eraneos-orange  # eraneos-blue
+
+extra_css:
+- stylesheets/extra.css
+- stylesheets/neoteroi-mkdocs-plugins-1.0.4.css
+
+extra_javascript:
+- javascripts/mathjax.js
+- https://polyfill.io/v3/polyfill.min.js?features=es6
+- https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+markdown_extensions:
+- admonition
+- attr_list
+- def_list
+- footnotes
+- md_in_html
+- neoteroi.cards
+- pymdownx.arithmatex:
+    generic: true
+- pymdownx.caret
+- pymdownx.critic
+- pymdownx.details
+- pymdownx.emoji:
+    emoji_index: !!python/name:material.extensions.emoji.twemoji
+    emoji_generator: !!python/name:material.extensions.emoji.to_svg
+- pymdownx.highlight:
+    anchor_linenums: true
+    line_spans: __span
+    pygments_lang_class: true
+- pymdownx.inlinehilite
+- pymdownx.keys
+- pymdownx.magiclink
+- pymdownx.mark
+- pymdownx.snippets:
+    check_paths: true
+- pymdownx.superfences:
+    custom_fences:
+    - name: mermaid
+      class: mermaid
+      format: !!python/name:pymdownx.superfences.fence_code_format
+- pymdownx.tabbed:  # tab boxes
+    alternate_style: true
+- pymdownx.tasklist:
+    custom_checkbox: true
+- pymdownx.tilde
+- tables
+- toc:
+    permalink: true  # permalinks to the right of the section headers
+
+plugins:
+- search
+- offline  # needed for viewing and searching the built pages locally
+- privacy  # GCPR compliance, downloading and caching of external assets
+- autorefs  # cross-refs to any markdown heading
+- coverage:
+    # currently, unfortunately only a single coverage report is supported
+    # - https://github.com/pawamoy/mkdocs-coverage/issues/6
+    page_name: coverage-unit
+    html_report_dir: .coverage-unit-html/
+- gen-files:
+    scripts:
+    - scripts/gen_ref_nav.py  # generate recursive API doc with separate pages
+# - git-revision-date-localized:
+#     type: datetime
+- literate-nav:
+    # needed for recursive API doc with separate pages via `scripts/gen_ref_nav.py`
+    nav_file: SUMMARY.md
+- mkdocstrings:
+    handlers:
+      python:
+        paths: [src]
+
+        import:
+        # external Sphinx-compatible object inventories for automatic cross-referencing
+        # - https://mkdocstrings.github.io/usage/#cross-references-to-other-projects-inventories
+        - https://docs.bokeh.org/en/latest/objects.inv  # bokeh
+        - https://matplotlib.org/stable/objects.inv  # matplotlib
+        - https://numpy.org/doc/stable/objects.inv  # numpy
+        - https://pandas.pydata.org/docs/objects.inv  # pandas
+        - https://pandera.readthedocs.io/en/stable/objects.inv  # pandera
+        # the following URLs don't work
+        # - https://panel.holoviz.org/en/latest/objects.inv
+        # - https://panel.holoviz.org/api/en/latest/objects.inv
+        # - https://panel.holoviz.org/docs/en/latest/objects.inv
+        # - https://docs.panel.holoviz.org/en/latest/objects.inv
+        # - https://panel.holoviz.org/api/en/objects.inv
+        # - https://panel.holoviz.org/api/en/master/objects.inv
+        # - https://panel.holoviz.org/api/objects.inv
+        - https://docs.pydantic.dev/latest/objects.inv  # pydantic
+        - https://docs.python.org/3/objects.inv  # python
+        - https://docs.python-requests.org/en/master/objects.inv  # requests
+        - https://rich.readthedocs.io/en/stable/objects.inv  # rich
+        - https://seaborn.pydata.org/objects.inv  # seaborn
+        - https://scikit-learn.org/stable/objects.inv  # scikit-learn
+        - https://raw.githubusercontent.com/mr-ubik/tensorflow-intersphinx/master/tf2_py_objects.inv  # tensorflow
+        - https://raw.githubusercontent.com/mr-ubik/tensorflow-intersphinx/master/tfp_py_objects.inv  # tensorflow probability
+
+        options:
+
+          # general options
+          show_inheritance_diagram: true  # [sponsors only] based on Mermaid
+
+          # heading options
+          show_category_heading: false  # prefer type symbols in the ToC
+          show_root_heading: false  # too much duplication
+          show_root_members_full_path: true  # helpful for copying when importing
+          show_object_full_path: false  # also for attributes and methods, a bit much
+          show_symbol_type_heading: true
+          show_symbol_type_toc: true
+
+          # members options
+          members_order: alphabetical  # source
+          # we get the recursive API doc with separate pages for each module from `scripts/gen_ref_nav.py`
+          # - `show_submodules: true` shows all modules on the same page
+          show_submodules: false
+          summary: true  # [sponsors only] not sure what this is doing
+
+          # docstring options
+          docstring_style: numpy
+          docstring_section_style: spacy  # table
+          merge_init_into_class: true  # makes sense as `__init__` is not normally called explicitly
+          show_if_no_docstring: true
+
+          # signatures/annotations options
+          annotations_path: source  # brief
+          line_length: 80
+          show_signature_annotations: true
+          signature_crossrefs: true
+          separate_signature: true  # much more readable
+          modernize_annotations: false  # [sponsors only] e.g. Optional[str] -> str | None
+
+          # extensions:
+          # don't use `griffe_typingdoc`
+          # - it causes duplicate parameter tables
+          # - [PEP 727](https://peps.python.org/pep-0727/) is still a draft
+
+          # [sponsors only] support for PEP 702 deprecation decorator `@warnings.deprecated(msg, category=DeprecationWarning)`
+          # - griffe_warnings_deprecated
+
+- mkdocs-jupyter:
+    execute: false  # tox is used to run notebooks once with jupytext
+    include: ['*.ipynb']  # default also includes *.py
+    include_source: true
