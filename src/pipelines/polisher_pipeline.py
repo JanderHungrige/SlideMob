@@ -1,6 +1,6 @@
 ## Pipeline - Polisher
-from ..core.base_class import PowerpointPipeline
-from ..core.polisher import SlidePolisher
+from core_functions.base_class import PowerpointPipeline
+from core_functions.polisher import SlidePolisher
 import traceback
 import os
 

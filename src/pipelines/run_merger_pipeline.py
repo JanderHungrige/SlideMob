@@ -1,5 +1,5 @@
-from ..core.base_class import PowerpointPipeline
-from ..core.merger import RunMerger
+from core_functions.base_class import PowerpointPipeline
+from core_functions.merger import RunMerger
 from lxml import etree as ET
 import traceback
 import os

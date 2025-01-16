@@ -1,6 +1,6 @@
-from ..core.base_class import PowerpointPipeline
-from ..core.translator import SlideTranslator
-from ..utils.path_manager import PathManager
+from core_functions.base_class import PowerpointPipeline
+from core_functions.translator import SlideTranslator
+from utils.path_manager import PathManager
 import os
 import traceback
 

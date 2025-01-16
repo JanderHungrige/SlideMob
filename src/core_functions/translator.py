@@ -8,7 +8,7 @@ from .base_class import PowerpointPipeline
 import os
 import re
 import traceback
-from ..utils.promts import translation_prompt_0, translation_prompt_1
+from utils.promts import translation_prompt_0, translation_prompt_1
 
 class TranslationResponse(BaseModel):
     translation: str
@@ -27,7 +27,8 @@ class SlideTranslator(PowerpointPipeline):
         self.update_language = update_language
         self.reduce_slides = reduce_slides
         # Load language codes mapping
-        with open("config_languages.json", "r") as f:
+        config_languages_path = os.path.join(self.root_folder, "src", "config_languages.json")
+        with open(config_languages_path, "r") as f:
             self.language_codes = json.load(f)
 
     def analyze_text(self, text: str) -> str:  # Added self parameter and type hint

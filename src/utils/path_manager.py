@@ -1,7 +1,7 @@
 import os
 
 def get_initial_config_path() -> str:
-    return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config.json")
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "src/config.json")
 
 class PathManager:
     def __init__(self, input_file: str):

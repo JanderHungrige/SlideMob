@@ -3,16 +3,15 @@ from tkinter import ttk, filedialog, messagebox
 import json
 import os
 import logging
-from ttkthemes import ThemedStyle  # You'll need to install ttkthemes
+from ttkthemes import ThemedStyle  
 
-
-from ..core.base_class import PowerpointPipeline
-from ..pipelines.translator_pipeline import PowerPointTranslator
-from ..pipelines.polisher_pipeline import PowerPointPolisher
-from ..utils.errorhandler import setup_error_logging
-from ..utils.config import create_config
-from ..utils.path_manager import PathManager
-from ..pipelines.run_merger_pipeline import PowerPointRunMerger
+from core_functions.base_class import PowerpointPipeline
+from pipelines.translator_pipeline import PowerPointTranslator
+from pipelines.polisher_pipeline import PowerPointPolisher
+from utils.errorhandler import setup_error_logging
+from utils.config import create_config
+from utils.path_manager import PathManager
+from pipelines.run_merger_pipeline import PowerPointRunMerger
 
 class SlideMobGUI(PowerpointPipeline):
     def __init__(self, root):

@@ -1,11 +1,11 @@
 import tkinter as tk
-from slidemob.gui.main_gui import SlideMobGUI
-from slidemob.pipelines.test_pipeline import TestPipeline
+from gui.main_gui import SlideMobGUI
+from pipelines.test_pipeline import TestPipeline
 import os
 import argparse  # Add this import
-from slidemob.utils.config import create_config
-from slidemob.utils.path_manager import PathManager
-from slidemob.pipelines.run_merger_pipeline import PowerPointRunMerger
+from utils.config import create_config
+from utils.path_manager import PathManager
+from pipelines.run_merger_pipeline import PowerPointRunMerger
 
 
 # from slidemob.utils.errorhandler import setup_error_logging
