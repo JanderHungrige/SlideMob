@@ -18,7 +18,8 @@ class SlideTranslator(PowerpointPipeline):
                  target_language: str,
                  Further_StyleInstructions: str = "None",
                  update_language: bool = False,
-                 reduce_slides: bool = False): 
+                 reduce_slides: bool = False,
+                 verbose: bool = False): 
 
         super().__init__()
 
@@ -26,6 +27,7 @@ class SlideTranslator(PowerpointPipeline):
         self.Further_StyleInstructions = Further_StyleInstructions
         self.update_language = update_language
         self.reduce_slides = reduce_slides
+        self.verbose = verbose
         # Load language codes mapping
         config_languages_path = os.path.join(self.root_folder, "src", "config_languages.json")
         with open(config_languages_path, "r") as f:
@@ -56,12 +58,10 @@ class SlideTranslator(PowerpointPipeline):
         return "Usable"      
 
     def translate_text(self, text: str) -> str:
-
         # result = self.analyze_text(text)
         # if result == "Unusable":
         #     return text  # Return original text without translation
         
-
         """Translate text while preserving approximate length and formatting."""
         chosen_prompt=1
         prompt_0 = translation_prompt_0(text, self.target_language, self.Further_StyleInstructions)
@@ -96,7 +96,8 @@ class SlideTranslator(PowerpointPipeline):
                     # Extract text between <translation> tags
                     translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
                     if translation_match:
-                        print(f"\tTranslation match: {translation_match.group(1).strip()}")
+                        if self.verbose:
+                            print(f"\tTranslation match: {translation_match.group(1).strip()}")
                         return translation_match.group(1).strip()
 
             except Exception as e:
@@ -156,45 +157,55 @@ class SlideTranslator(PowerpointPipeline):
     def create_translation_map(self, text_elements: List[ET.Element], original_text_elements: set) -> dict:
         """Create a mapping between original text and their translations."""
         translation_map = {text: "" for text in original_text_elements}
-        
         for element in text_elements:
-            self.original_text = element.text.strip()
-            source_lang = element.get('lang', 'en-GB')
-            #print(f"\tLLM fed text: {original_text}")
+            if element:  
+                self.original_text = element.text.strip()
+                source_lang = element.get('lang', 'en-GB') 
+            else:
+                continue
+
             if self.original_text:
-                translated_text = self.translate_text(self.original_text)
-                print(f"\tOriginal paragraph: {self.original_text}")
-                print(f"\tTranslated paragraph: {translated_text}\n")
-                
-                prompt = f"""Match each original text segment with its corresponding part from the translation.
-                Original segments: {[text for text in original_text_elements]}
-                Full original text: {self.original_text}
-                Full translation: {translated_text}
-                
-                Return a JSON object where keys are the original segments and values are their corresponding translations.
-                Only include segments that appear in the original text."""
-                
-                try:
-                    response = self.client.chat.completions.create(
-                        model=self.pydentic_model,
-                        messages=[
-                            {"role": "system", "content": "You are a professional text alignment expert."},
-                            {"role": "user", "content": prompt}
-                        ],
-                        temperature=0.3,
-                        response_format={"type": "json_object"}
-                    )
+                # Check if the text is only a number (float or integer) with optional spaces
+                if re.match(r'^\s*-?\d*\.?\d+\s*$', self.original_text):
+                    translated_text = self.original_text
+                    # Update translation map for the current original text
+                    if self.original_text in translation_map:
+                        translation_map[self.original_text] = translated_text
+                else:
+                    translated_text = self.translate_text(self.original_text)
+                    if self.verbose:     
+                        print(f"\tOriginal paragraph: {self.original_text}")
+                        print(f"\tTranslated paragraph: {translated_text}\n")
                     
-                    segment_mappings = json.loads(response.choices[0].message.content)
+                    prompt = f"""Match each original text segment with its corresponding part from the translation.
+                    Original segments: {[text for text in original_text_elements]}
+                    Full original text: {self.original_text}
+                    Full translation: {translated_text}
                     
-                    for orig_text, trans_text in segment_mappings.items():
-                        if orig_text in translation_map:
-                            translation_map[orig_text] = trans_text
+                    Return a JSON object where keys are the original segments and values are their corresponding translations.
+                    Only include segments that appear in the original text."""
+                
+                    try:
+                        response = self.client.chat.completions.create(
+                            model=self.pydentic_model,
+                            messages=[
+                                {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            temperature=0.3,
+                            response_format={"type": "json_object"}
+                        )
+                        
+                        segment_mappings = json.loads(response.choices[0].message.content)
+                        
+                        for orig_text, trans_text in segment_mappings.items():
+                            if orig_text in translation_map:
+                                translation_map[orig_text] = trans_text
                             
-                except Exception as e:
-                    print(f"\tError matching segments: {e}")
-                    print("Full traceback:")
-                    print(traceback.format_exc())
+                    except Exception as e:
+                        print(f"\tError matching segments for translation map: {e}")
+                        print("Full traceback:")
+                        print(traceback.format_exc())
         
         print(f"\tTranslation map: {translation_map}")
         return translation_map
@@ -228,15 +239,16 @@ class SlideTranslator(PowerpointPipeline):
         """Main function to process all slides in the presentation."""
         slide_files = self.find_slide_files(folder_path)
         selected_slides = ["slide2.xml", "slide3.xml", "slide4.xml"]
-        # reduce_slides = False
+        reduce_slides = False
 
         for slide_file in sorted(slide_files):
             if self.reduce_slides:
                 if os.path.basename(slide_file) not in selected_slides:
                     continue
 
-            print(f"\nProcessing {os.path.basename(slide_file)}...")
-            print(f"Processing slide {slide_files.index(slide_file) + 1} of {len(slide_files)}...")
+            if self.verbose:
+                print(f"\nProcessing {os.path.basename(slide_file)}...")
+                print(f"Processing slide {slide_files.index(slide_file) + 1} of {len(slide_files)}...")
             
             # Parse XML while preserving structure
             tree = ET.parse(slide_file)

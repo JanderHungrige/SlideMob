@@ -11,7 +11,7 @@ class PowerPointTranslator(PowerpointPipeline):
         self.verbose = verbose
         self.reduce_slides = reduce_slides
         # Initialize transformer and translator
-        self.translator = SlideTranslator(target_language, Further_StyleInstructions, update_language, reduce_slides)
+        self.translator = SlideTranslator(target_language, Further_StyleInstructions, update_language, reduce_slides, verbose)
 
     def translate_presentation(self):
         """Main method to handle the full translation process"""
