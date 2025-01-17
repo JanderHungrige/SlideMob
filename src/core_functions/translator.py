@@ -1,5 +1,5 @@
 from lxml import etree as ET
-from openai import OpenAI
+import requests
 from googletrans import Translator
 import asyncio
 from pydantic import BaseModel
@@ -10,7 +10,7 @@ from .base_class import PowerpointPipeline
 import os
 import re
 import traceback
-from utils.promts import translation_prompt_0, translation_prompt_1
+from utils.promts import translation_prompt_openai_0, translation_prompt_openai_1, translation_prompt_huggingface_llama2_0, translation_prompt_huggingface_llama2_1
 
 class TranslationResponse(BaseModel):
     translation: str
@@ -68,11 +68,11 @@ class SlideTranslator(PowerpointPipeline):
         
         """Translate text while preserving approximate length and formatting."""
         chosen_prompt=1
-        prompt_0 = translation_prompt_0(text, self.target_language, self.Further_StyleInstructions)
-        prompt_1 = translation_prompt_1(text, self.target_language, self.Further_StyleInstructions)
+        prompt_0 = translation_prompt_openai_0(text, self.target_language, self.Further_StyleInstructions)
+        prompt_1 = translation_prompt_openai_1(text, self.target_language, self.Further_StyleInstructions)
                 
         try:
-            response = self.client.chat.completions.create(
+            response = self.translation_client.chat.completions.create(
                 model=self.model,
                     messages=[
                         {"role": "system", "content": "You are a professional translator."},
@@ -128,6 +128,31 @@ class SlideTranslator(PowerpointPipeline):
         
         asyncio.run(translate_text())
         return self.result.text
+    
+    def translate_text_huggingface(self, text: str) -> str:
+        prompt_0 = translation_prompt_huggingface_llama2_0(text, self.target_language, self.Further_StyleInstructions)
+        prompt_1 = translation_prompt_huggingface_llama2_1(text, self.target_language, self.Further_StyleInstructions)
+
+        payload = {"inputs": prompt_0}
+        response = requests.post(self.HUGGINGFACE_API_URL, headers=self.huggingface_headers, json=payload)
+                        
+        # Extract and validate JSON from the response
+        try:
+            response_text = response.json()[0]["generated_text"]
+            # Find JSON content between the last [/INST] and the end
+            content = response_text.split("[/INST]")[-1].strip()
+            translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
+            if translation_match:
+                if self.verbose:
+                    print(f"\tTranslation match: {translation_match.group(1).strip()}")
+                return translation_match.group(1).strip()
+                        
+        except (json.JSONDecodeError, KeyError, IndexError) as e:
+            print(f"Error parsing Hugging Face response: {e}")
+            print(f"Raw response: {response.text}")
+            # Return empty mapping as fallback
+            return {}
+ 
 
     def create_translation_map(self, text_elements: List[ET.Element], original_text_elements: set) -> dict:
         """Create a mapping between original text and their translations."""
@@ -151,6 +176,8 @@ class SlideTranslator(PowerpointPipeline):
                         translated_text = self.translate_text_OpenAI(self.original_text)
                     elif self.translation_method == "Google":
                         translated_text = self.translate_text_google(self.original_text)
+                    elif self.translation_method == "HuggingFace":
+                        translated_text = self.translate_text_huggingface(self.original_text)
                     if self.verbose:     
                         print(f"\tOriginal paragraph: {self.original_text}")
                         print(f"\tTranslated paragraph: {translated_text}\n")
@@ -164,16 +191,57 @@ class SlideTranslator(PowerpointPipeline):
                     Only include segments that appear in the original text."""
                 
                     try:
-                        response = self.client.chat.completions.create(
-                            model=self.pydentic_model,
-                            messages=[
+                        if self.mapping_client == "OpenAI":
+                            response = self.mapping_client.chat.completions.create(
+                                model=self.pydentic_model,
+                                messages=[
                                 {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
                                 {"role": "user", "content": prompt}
                             ],
                             temperature=0.3,
-                            response_format={"type": "json_object"}
-                        )
-                        
+                                response_format={"type": "json_object"}
+                            )
+                        elif self.mapping_client == "HuggingFace":
+                            # First create a structured prompt that explicitly requests JSON output
+                            system_prompt = """You are a professional text alignment expert, editor and translator.
+                            Your task is to return a JSON object mapping original text segments to their translations.
+                            The output must be valid JSON with the original segments as keys and translations as values."""
+                            
+                            formatted_prompt = f"""<s>[INST] <<SYS>>
+                            {system_prompt}
+                            <</SYS>>
+                            
+                            Original segments: {[text for text in original_text_elements]}
+                            Full original text: {self.original_text}
+                            Full translation: {translated_text}
+                            
+                            Return a JSON object where keys are the original segments and values are their corresponding translations.
+                            Only include segments that appear in the original text.
+                            
+                            Format your response as valid JSON like this:
+                            {{
+                                "original_text_1": "translated_text_1",
+                                "original_text_2": "translated_text_2"
+                            }}[/INST]"""
+
+                            payload = {"inputs": formatted_prompt}
+                            response = requests.post(self.HUGGINGFACE_API_URL, headers=self.huggingface_headers, json=payload)
+                            
+                            # Extract and validate JSON from the response
+                            try:
+                                response_text = response.json()[0]["generated_text"]
+                                # Find JSON content between the last [/INST] and the end
+                                json_text = response_text.split("[/INST]")[-1].strip()
+                                # Try to parse the JSON
+                                segment_mappings = json.loads(json_text)
+                                return segment_mappings
+                            except (json.JSONDecodeError, KeyError, IndexError) as e:
+                                print(f"Error parsing Hugging Face response: {e}")
+                                print(f"Raw response: {response.text}")
+                                # Return empty mapping as fallback
+                                return {}
+                   
+                                       
                         segment_mappings = json.loads(response.choices[0].message.content)
                         
                         for orig_text, trans_text in segment_mappings.items():

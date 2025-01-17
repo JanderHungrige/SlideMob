@@ -13,8 +13,9 @@ import traceback
 class PowerpointPipeline:
     def __init__(self, 
                  model: str="gpt-4o", 
-                 pydentic_model: str="gpt-4-turbo-preview", 
-                 client:str="OpenAI", 
+                 pydentic_model: str="gpt-4-turbo-preview",
+                 translation_client:str="OpenAI", 
+                 mapping_client:str="HuggingFace",
                  verbose: bool=False,
                  extract_namespaces: bool=False,
                  namespaces: dict={'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
@@ -39,9 +40,11 @@ class PowerpointPipeline:
         self.target_language = self.config["target_language"]
      
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
+        self.huggingface_api_key = os.getenv("HUGGINGFACE")
         self.model = model
         self.pydentic_model=pydentic_model
-        self.client = client
+        self.translation_client = translation_client
+        self.mapping_client = mapping_client
         self.extract_namespaces = extract_namespaces
         self.namespaces =namespaces 
 
@@ -52,11 +55,22 @@ class PowerpointPipeline:
         if verbose: print(f"\tOutput folder: {self.output_folder}")
 
 
-        if client == "OpenAI":
-            self.client = OpenAI(api_key=self.openai_api_key)
+        if self.translation_client == "OpenAI":
+            self.translation_client = OpenAI(api_key=self.openai_api_key)
+        elif self.translation_client == "HuggingFace":
+            self.HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf"
+            self.huggingface_headers = {"Authorization": "Bearer " + self.huggingface_api_key}
         else:
-            print("\tClient not supported (So far only OpenAI is supported)")
+            print("\tClient not supported for translation(So far only OpenAI and HuggingFace are supported)")
         pass
+
+        if self.mapping_client == "OpenAI":
+            self.mapping_client = OpenAI(api_key=self.openai_api_key)
+        elif self.mapping_client == "HuggingFace":
+            self.HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf"
+            self.huggingface_headers = {"Authorization": "Bearer " + self.huggingface_api_key}
+        else:
+            print("\tClient not supported for mapping(So far only HuggingFace is supported)")
       
     def find_slide_files(self, root_folder: str) -> List[str]:
         """Find all slide XML files in the folder structure."""

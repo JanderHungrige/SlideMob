@@ -6,7 +6,7 @@
     "update_language": false,
     "reduce_slides": false,
     "target_language": "German",
-    "translation_method": "Google",
+    "translation_method": "HuggingFace",
     "style_instructions": "",
     "pptx_path": "/Users/jwh/Downloads/SLIDEMOBTEST.pptx",
     "output_folder": "/Users/jwh/Downloads"

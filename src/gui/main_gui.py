@@ -196,7 +196,8 @@ class SlideMobGUI(PowerpointPipeline):
         ttk.Label(method_frame, text="Translation Method:").pack(side="left")
         ttk.Radiobutton(method_frame, text="OpenAI", variable=self.translation_method, value="OpenAI").pack(side="left")
         ttk.Radiobutton(method_frame, text="Google", variable=self.translation_method, value="Google").pack(side="left")
-        
+        ttk.Radiobutton(method_frame, text="HuggingFace", variable=self.translation_method, value="HuggingFace").pack(side="left")
+
         # Style Instructions
         style_frame = ttk.LabelFrame(self.root, text="Style Instructions", padding=10)
         style_frame.pack(fill="x", padx=10, pady=5)
