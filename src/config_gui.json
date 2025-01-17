@@ -1,0 +1,13 @@
+{
+    "extract_pptx": true,
+    "pre_merge": false,
+    "polish_content": false,
+    "translate_content": true,
+    "update_language": false,
+    "reduce_slides": false,
+    "target_language": "German",
+    "translation_method": "Google",
+    "style_instructions": "",
+    "pptx_path": "/Users/jwh/Downloads/SLIDEMOBTEST.pptx",
+    "output_folder": "/Users/jwh/Downloads"
+}

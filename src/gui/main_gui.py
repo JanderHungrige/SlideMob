@@ -4,6 +4,7 @@ import json
 import os
 import logging
 from ttkthemes import ThemedStyle  
+import traceback
 
 from core_functions.base_class import PowerpointPipeline
 from pipelines.translator_pipeline import PowerPointTranslator
@@ -19,8 +20,12 @@ class SlideMobGUI(PowerpointPipeline):
         self.root = root
         self.root.title("SlideMob PowerPoint Processor")
         self.root.geometry("700x750")
-        
-        
+
+        #Load language codes
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_languages.json")) as f:
+            language_config = json.load(f)
+        self.language_options = [lang["language"].split(" (")[0] for lang in language_config["languages"]]
+            
         # GUI Variables (StringVar)
         self.gui_pptx_path = tk.StringVar()
         self.gui_output_path = tk.StringVar()
@@ -100,7 +105,11 @@ class SlideMobGUI(PowerpointPipeline):
 • Update PPTX Language: Updates PowerPoint's internal language settings to match the target language."""
         }
 
+        self.translation_method = tk.StringVar(value="OpenAI")
+
         self.create_widgets()
+
+        self.load_gui_config()
 
     def _update_pptx_path(self, *args):
         """Update the parent class pptx_path when GUI var changes"""
@@ -175,9 +184,18 @@ class SlideMobGUI(PowerpointPipeline):
         translation_frame.pack(fill="x", pady=5)
         
         ttk.Label(translation_frame, text="Target Language:").pack(side="left")
-        languages = ["English", "German", "French", "Spanish", "Italian", "Chinese", "Japanese", "Russian","Portuguese","Dutch","Polish"]
-        language_dropdown = ttk.Combobox(translation_frame, textvariable=self.gui_target_language, values=languages)
+        #languages = ["English", "German", "French", "Spanish", "Italian", "Chinese", "Japanese", "Russian","Portuguese","Dutch","Polish"]
+        
+        language_dropdown = ttk.Combobox(translation_frame, textvariable=self.gui_target_language, values=self.language_options)
         language_dropdown.pack(side="left", padx=5)
+        
+        # Translation Method Frame
+        method_frame = ttk.Frame(translation_frame)
+        method_frame.pack(side="left", padx=(20, 0))
+
+        ttk.Label(method_frame, text="Translation Method:").pack(side="left")
+        ttk.Radiobutton(method_frame, text="OpenAI", variable=self.translation_method, value="OpenAI").pack(side="left")
+        ttk.Radiobutton(method_frame, text="Google", variable=self.translation_method, value="Google").pack(side="left")
         
         # Style Instructions
         style_frame = ttk.LabelFrame(self.root, text="Style Instructions", padding=10)
@@ -219,6 +237,9 @@ class SlideMobGUI(PowerpointPipeline):
         if not self.pptx_path or not self.output_path:
             messagebox.showerror("Error", "Please select both input file and output location")
             return
+        
+        # Save GUI config as soon as process button is clicked
+        self.save_gui_config()
         
         try:
             # Create PathManager instance with the actual path string
@@ -271,11 +292,15 @@ class SlideMobGUI(PowerpointPipeline):
                     target_language=self.gui_target_language.get(),
                     Further_StyleInstructions=self.gui_style_instructions.get(),
                     update_language=self.update_language.get(),
-                    fresh_extract=not (self.extract_var.get() or self.polish_var.get())
+                    fresh_extract=not (self.extract_var.get() or self.polish_var.get()),
+                    translation_method=self.translation_method.get()
                 )
                 success = translator.translate_presentation()
                 if not success:
+                    print("Full traceback:")
+                    print(traceback.format_exc())
                     raise Exception("Translation failed")
+
                     
                 self.progress['value'] += step_size
                 self.root.update()
@@ -308,6 +333,57 @@ class SlideMobGUI(PowerpointPipeline):
 
     def show_help(self, help_key):
         messagebox.showinfo("Processing Options Help", self.help_texts[help_key])
+
+    def load_gui_config(self):
+        """Load GUI configuration from config file"""
+        try:
+            config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_gui.json")
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                    
+                # Set GUI variables from config
+                self.extract_var.set(config.get('extract_pptx', True))
+                self.merge_runs_var.set(config.get('pre_merge', False))
+                self.polish_var.set(config.get('polish_content', False))
+                self.translate_var.set(config.get('translate_content', True))
+                self.update_language.set(config.get('update_language', False))
+                self.reduce_slides.set(config.get('reduce_slides', False))
+                self.gui_target_language.set(config.get('target_language', 'English'))
+                self.translation_method.set(config.get('translation_method', 'OpenAI'))
+                self.gui_style_instructions.set(config.get('style_instructions', ''))
+                
+                # Load path settings if they exist
+                if 'pptx_path' in config:
+                    self.gui_pptx_path.set(config.get('pptx_path'))
+                if 'output_folder' in config:
+                    self.gui_output_path.set(config.get('output_folder'))
+                
+        except Exception as e:
+            logging.warning(f"Could not load GUI config: {str(e)}")
+
+    def save_gui_config(self):
+        """Save current GUI configuration to config file"""
+        try:
+            config = {
+                'extract_pptx': self.extract_var.get(),
+                'pre_merge': self.merge_runs_var.get(),
+                'polish_content': self.polish_var.get(),
+                'translate_content': self.translate_var.get(),
+                'update_language': self.update_language.get(),
+                'reduce_slides': self.reduce_slides.get(),
+                'target_language': self.gui_target_language.get(),
+                'translation_method': self.translation_method.get(),
+                'style_instructions': self.gui_style_instructions.get(),
+                'pptx_path': self.gui_pptx_path.get(),
+                'output_folder': self.gui_output_path.get()
+            }
+            
+            config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_gui.json")
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=4)
+        except Exception as e:
+            logging.warning(f"Could not save GUI config: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()

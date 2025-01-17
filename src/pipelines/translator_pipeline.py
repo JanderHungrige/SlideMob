@@ -5,13 +5,14 @@ import os
 import traceback
 
 class PowerPointTranslator(PowerpointPipeline):
-    def __init__(self, target_language:str, Further_StyleInstructions:str="None", update_language:bool=False, fresh_extract:bool=True, verbose:bool=False, reduce_slides:bool=False):
+    def __init__(self, target_language:str, Further_StyleInstructions:str="None", update_language:bool=False, fresh_extract:bool=True, verbose:bool=False, reduce_slides:bool=False, translation_method:str="OpenAI"):
         super().__init__(),
         self.fresh_extract = fresh_extract
         self.verbose = verbose
         self.reduce_slides = reduce_slides
+        self.translation_method = translation_method
         # Initialize transformer and translator
-        self.translator = SlideTranslator(target_language, Further_StyleInstructions, update_language, reduce_slides, verbose)
+        self.translator = SlideTranslator(target_language, Further_StyleInstructions, update_language, reduce_slides, verbose, translation_method)
 
     def translate_presentation(self):
         """Main method to handle the full translation process"""
@@ -19,17 +20,12 @@ class PowerPointTranslator(PowerpointPipeline):
             # Extract PPTX
             if self.fresh_extract:  
                 self.extract_pptx()
-            
             #Get namespaces
             namespaces = self.get_namespace()
             self.translator.namespaces = namespaces
-            
             # Process slides
             self.translator.process_slides(self.extract_path)
-            
             # Compose final PPTX
-            # output_path = os.path.join(self.output_folder, self.output_pptx_name)
-            # self.transformer.compose_pptx(self.extract_path, output_path)
             self.compose_pptx(self.extract_path, self.output_pptx)
             return True
             

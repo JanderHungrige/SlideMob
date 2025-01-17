@@ -24,5 +24,29 @@
       { "code": "hu-HU", "language": "Hungarian (Hungary)" },
       { "code": "tr-TR", "language": "Turkish (Turkey)" },
       { "code": "he-IL", "language": "Hebrew (Israel)" }
-    ]
-  }
+    ],
+    "language_google_codes": {
+      "en-US": "en",
+      "en-GB": "en", 
+      "de-DE": "de",
+      "fr-FR": "fr",
+      "es-ES": "es",
+      "it-IT": "it",
+      "pt-BR": "pt",
+      "zh-CN": "zh",
+      "ja-JP": "ja",
+      "ko-KR": "ko",
+      "ru-RU": "ru",
+      "ar-SA": "ar",
+      "nl-NL": "nl",
+      "sv-SE": "sv",
+      "da-DK": "da",
+      "fi-FI": "fi",
+      "nb-NO": "nb",
+      "pl-PL": "pl",
+      "cs-CZ": "cs",
+      "hu-HU": "hu",
+      "tr-TR": "tr",
+      "he-IL": "he"
+    }
+}
