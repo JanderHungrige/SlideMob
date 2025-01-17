@@ -15,7 +15,7 @@ class PowerPointTranslator(PowerpointPipeline):
         # Initialize transformer and translator
         self.translator = SlideTranslator(target_language, Further_StyleInstructions, update_language, reduce_slides, verbose, translation_method, mapping_method)
 
-    def translate_presentation(self, progress_callback=None):
+    def translate_presentation(self, progress_callback=None, stop_check_callback=None):
         """Main method to handle the full translation process"""
         try:
             # Extract PPTX
@@ -24,8 +24,10 @@ class PowerPointTranslator(PowerpointPipeline):
             #Get namespaces
             namespaces = self.get_namespace()
             self.translator.namespaces = namespaces
-            # Process slides with callback
-            self.translator.process_slides(self.extract_path, progress_callback)
+            # Process slides with callbacks
+            success = self.translator.process_slides(self.extract_path, progress_callback, stop_check_callback)
+            if not success:
+                return False
             # Compose final PPTX
             self.compose_pptx(self.extract_path, self.output_pptx)
             return True

@@ -289,13 +289,18 @@ class SlideTranslator(PowerpointPipeline):
             print(traceback.format_exc())
             return "en-US"  # default to en-US on error
 
-    def process_slides(self, folder_path: str, progress_callback=None):
+    def process_slides(self, folder_path: str, progress_callback=None, stop_check_callback=None):
         """Main function to process all slides in the presentation."""
         slide_files = self.find_slide_files(folder_path)
         selected_slides = ["slide2.xml", "slide3.xml", "slide4.xml"]
         total_slides = len(slide_files)
 
         for slide_file in sorted(slide_files):
+            # Check if processing should be stopped
+            if stop_check_callback and stop_check_callback():
+                print("\nProcessing stopped by user")
+                return False
+
             if self.reduce_slides:
                 if os.path.basename(slide_file) not in selected_slides:
                     continue
@@ -321,10 +326,15 @@ class SlideTranslator(PowerpointPipeline):
             
             # Extract and create translation mapping
             text_elements, original_text_elements = self.extract_text_runs(slide_file)
-            translation_map = self.create_translation_map(text_elements, original_text_elements) # FYI: in here there is also the translation happening
+            translation_map = self.create_translation_map(text_elements, original_text_elements)
             
             # Update text while preserving XML structure and whitespace
             for original_text, translation in translation_map.items():
+                # Check for stop request during translation updates
+                if stop_check_callback and stop_check_callback():
+                    print("\nProcessing stopped by user")
+                    return False
+
                 if not translation.strip():  # Skip empty translations
                     continue
                 #Update Text
@@ -350,10 +360,15 @@ class SlideTranslator(PowerpointPipeline):
                                     parent_paragraph.remove(parent_run)
 
                 if self.update_language:
+                    # Check for stop request during language updates
+                    if stop_check_callback and stop_check_callback():
+                        print("\nProcessing stopped by user")
+                        return False
+
                     # Detect and update language
                     for run in root.findall('.//a:r', self.namespaces):
                         text_elem = run.find('a:t', self.namespaces)
-                        if text_elem.text is not None:
+                        if text_elem is not None and text_elem.text is not None:
                             try:
                                 detected_lang = self.detect_pptx_language(text_elem.text.strip())
                                 # Find and update the language attribute in the corresponding rPr element
@@ -361,14 +376,10 @@ class SlideTranslator(PowerpointPipeline):
                                 rPr = run.find('a:rPr', self.namespaces)
                                 if rPr is not None:
                                     rPr.set('lang', detected_lang)
-                                    print(f"\tUpdated language for '{translation.strip()}' to {detected_lang}")
+                                    if self.verbose:
+                                        print(f"\tUpdated language for '{translation.strip()}' to {detected_lang}")
                             except Exception:
                                 continue
-                        # else:
-                        #     # Create rPr element if it doesn't exist
-                        #     rPr = ET.SubElement(run, f"{{{self.namespaces['a']}}}rPr")
-                        #     rPr.set('lang', detected_lang)
-                        #     print(f"created property language for '{translation.strip()}' to {detected_lang}")                                    
 
             # Register extracted namespaces
             for prefix, uri in namespaces.items():
@@ -381,3 +392,5 @@ class SlideTranslator(PowerpointPipeline):
             # Write back XML while preserving declaration and namespaces
             with open(slide_file, 'wb') as f:
                 tree.write(f, encoding='UTF-8', xml_declaration=True)
+        
+        return True

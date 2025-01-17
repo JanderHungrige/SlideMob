@@ -125,22 +125,12 @@ class SettingsWindow:
         if not self.huggingface_key.get().startswith('*'):
             set_key(env_path, "HUGGINGFACE", self.huggingface_key.get())
         
-        # Update parent's translation method
+        # Update parent's translation and mapping methods
         self.parent.translation_method.set(self.translation_method.get())
+        self.parent.mapping_method.set(self.mapping_method.get())
         
-        # Save mapping method to config
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_gui.json")
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-            
-            config['mapping_method'] = self.mapping_method.get()
-            
-            with open(config_path, 'w') as f:
-                json.dump(config, f, indent=4)
-                
-        except Exception as e:
-            messagebox.showerror("Error", f"Could not save mapping method: {str(e)}")
+        # Save all GUI settings immediately using parent's save method
+        self.parent.save_gui_config()
         
         messagebox.showinfo("Success", "Settings saved successfully!")
         self.window.destroy()

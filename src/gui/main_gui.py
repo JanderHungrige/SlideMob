@@ -230,11 +230,12 @@ class SlideMobGUI(PowerpointPipeline):
 
         self.process_button = ttk.Button(button_frame, text="Process PowerPoint", 
                                        command=self.process_presentation, style='Blue.TButton')
-        self.process_button.pack(side="left", padx=5)
+        self.process_button.pack(side="left", padx=10, pady=10)
 
         self.stop_button = ttk.Button(button_frame, text="Stop", 
-                                     command=self.stop_processing, style='Blue.TButton')
-        self.stop_button.pack(side="left", padx=5)
+                                     command=self.stop_processing, style='Blue.TButton',
+                                     width=5)
+        self.stop_button.pack(side="left", padx=10, pady=10)
         self.stop_button.configure(state="disabled")  # Initially disabled
         
         # Status
@@ -338,9 +339,12 @@ class SlideMobGUI(PowerpointPipeline):
                     mapping_method=self.mapping_method.get()
                 )
                 success = translator.translate_presentation(
-                    progress_callback=self.update_translation_progress
+                    progress_callback=self.update_translation_progress,
+                    stop_check_callback=lambda: self.stop_requested
                 )
                 if not success:
+                    if self.stop_requested:
+                        raise Exception("Processing stopped by user")
                     print("Full traceback:")
                     print(traceback.format_exc())
                     raise Exception("Translation failed")
