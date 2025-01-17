@@ -132,6 +132,16 @@ class PowerpointPipeline:
     def extract_pptx(self) -> str:
         """Extract a PPTX file into its XML components."""
         os.makedirs(self.extract_path, exist_ok=True)
+
+        # Clear the extract folder if it's not empty
+        if os.path.exists(self.extract_path) and os.listdir(self.extract_path):
+            for item in os.listdir(self.extract_path):
+                item_path = os.path.join(self.extract_path, item)
+                if os.path.isfile(item_path):
+                    os.unlink(item_path)
+                elif os.path.isdir(item_path):
+                    import shutil
+                    shutil.rmtree(item_path)
         
         with zipfile.ZipFile(self.pptx_path, 'r') as pptx:
             pptx.extractall(self.extract_path)

@@ -22,7 +22,8 @@ class SlideTranslator(PowerpointPipeline):
                  update_language: bool = False,
                  reduce_slides: bool = False,
                  verbose: bool = False,
-                 translation_method: str = "OpenAI"): 
+                 translation_method: str = "OpenAI",
+                 mapping_method: str = "OpenAI"): 
 
         super().__init__()
 
@@ -32,10 +33,43 @@ class SlideTranslator(PowerpointPipeline):
         self.reduce_slides = reduce_slides
         self.verbose = verbose
         self.translation_method = translation_method
+        self.mapping_method = mapping_method
         # Load language codes mapping
         config_languages_path = os.path.join(self.root_folder, "src", "config_languages.json")
         with open(config_languages_path, "r") as f:
             self.language_codes = json.load(f)
+
+
+    def create_translation_map(self, text_elements: List[ET.Element], original_text_elements: set) -> dict:
+        """Create a mapping between original text and their translations."""
+        translation_map = {text: "" for text in original_text_elements}
+        for element in text_elements:
+            if element.text is not None:  
+                self.original_text = element.text.strip()
+                source_lang = element.get('lang', 'en-GB') 
+            else:
+                continue
+
+            if self.original_text is not None:
+                # Check if the text is only a number (float or integer) with optional spaces
+                if re.match(r'^\s*-?\d*\.?\d+\s*$', self.original_text):
+                    translated_text = self.original_text
+                    # Update translation map for the current original text
+                    if self.original_text in translation_map:
+                        translation_map[self.original_text] = translated_text
+                else:
+                    if self.translation_method == "OpenAI":
+                        translated_text = self.translate_text_OpenAI(self.original_text)
+                    elif self.translation_method == "Google":
+                        translated_text = self.translate_text_google(self.original_text)
+                    elif self.translation_method == "HuggingFace":
+                        translated_text = self.translate_text_huggingface(self.original_text)
+                    if self.verbose:     
+                        print(f"\tOriginal paragraph: {self.original_text}")
+                        print(f"\tTranslated paragraph: {translated_text}\n")
+
+        translation_map = self._create_mapping_map(original_text_elements, translated_text, translation_map)
+        return translation_map
 
     def analyze_text(self, text: str) -> str:  
         if not text or text.isspace():
@@ -154,35 +188,12 @@ class SlideTranslator(PowerpointPipeline):
             return {}
  
 
-    def create_translation_map(self, text_elements: List[ET.Element], original_text_elements: set) -> dict:
+    def _create_mapping_map(self, original_text_elements: set, translated_text: str, translation_map: dict) -> dict:
         """Create a mapping between original text and their translations."""
-        translation_map = {text: "" for text in original_text_elements}
-        for element in text_elements:
-            if element.text is not None:  
-                self.original_text = element.text.strip()
-                source_lang = element.get('lang', 'en-GB') 
-            else:
-                continue
 
-            if self.original_text is not None:
-                # Check if the text is only a number (float or integer) with optional spaces
-                if re.match(r'^\s*-?\d*\.?\d+\s*$', self.original_text):
-                    translated_text = self.original_text
-                    # Update translation map for the current original text
-                    if self.original_text in translation_map:
-                        translation_map[self.original_text] = translated_text
-                else:
-                    if self.translation_method == "OpenAI":
-                        translated_text = self.translate_text_OpenAI(self.original_text)
-                    elif self.translation_method == "Google":
-                        translated_text = self.translate_text_google(self.original_text)
-                    elif self.translation_method == "HuggingFace":
-                        translated_text = self.translate_text_huggingface(self.original_text)
-                    if self.verbose:     
-                        print(f"\tOriginal paragraph: {self.original_text}")
-                        print(f"\tTranslated paragraph: {translated_text}\n")
-                    
-                    prompt = f"""Match each original text segment with its corresponding part from the translation.
+        try:
+            if self.mapping_method == "OpenAI":
+                prompt = f"""Match each original text segment with its corresponding part from the translation.
                     Original segments: {[text for text in original_text_elements]}
                     Full original text: {self.original_text}
                     Full translation: {translated_text}
@@ -190,68 +201,65 @@ class SlideTranslator(PowerpointPipeline):
                     Return a JSON object where keys are the original segments and values are their corresponding translations.
                     Only include segments that appear in the original text."""
                 
-                    try:
-                        if self.mapping_client == "OpenAI":
-                            response = self.mapping_client.chat.completions.create(
-                                model=self.pydentic_model,
-                                messages=[
-                                {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
-                                {"role": "user", "content": prompt}
-                            ],
-                            temperature=0.3,
-                                response_format={"type": "json_object"}
-                            )
-                        elif self.mapping_client == "HuggingFace":
-                            # First create a structured prompt that explicitly requests JSON output
-                            system_prompt = """You are a professional text alignment expert, editor and translator.
-                            Your task is to return a JSON object mapping original text segments to their translations.
-                            The output must be valid JSON with the original segments as keys and translations as values."""
-                            
-                            formatted_prompt = f"""<s>[INST] <<SYS>>
-                            {system_prompt}
-                            <</SYS>>
-                            
-                            Original segments: {[text for text in original_text_elements]}
-                            Full original text: {self.original_text}
-                            Full translation: {translated_text}
-                            
-                            Return a JSON object where keys are the original segments and values are their corresponding translations.
-                            Only include segments that appear in the original text.
-                            
-                            Format your response as valid JSON like this:
-                            {{
-                                "original_text_1": "translated_text_1",
-                                "original_text_2": "translated_text_2"
-                            }}[/INST]"""
+                response = self.mapping_client.chat.completions.create(
+                    model=self.pydentic_model,
+                    messages=[
+                        {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    response_format={"type": "json_object"}
+                )
+                segment_mappings = json.loads(response.choices[0].message.content)
+                
+            elif self.mapping_method == "HuggingFace":
+                # Use existing HuggingFace implementation
+                system_prompt = """You are a professional text alignment expert, editor and translator.
+                Your task is to return a JSON object mapping original text segments to their translations.
+                The output must be valid JSON with the original segments as keys and translations as values."""
+                
+                formatted_prompt = f"""<s>[INST] <<SYS>>
+                {system_prompt}
+                <</SYS>>
+                
+                Original segments: {[text for text in original_text_elements]}
+                Full original text: {self.original_text}
+                Full translation: {translated_text}
+                
+                Return a JSON object where keys are the original segments and values are their corresponding translations.
+                Only include segments that appear in the original text.
+                
+                Format your response as valid JSON like this:
+                {{
+                    "original_text_1": "translated_text_1",
+                    "original_text_2": "translated_text_2"
+                }}[/INST]"""
 
-                            payload = {"inputs": formatted_prompt}
-                            response = requests.post(self.HUGGINGFACE_API_URL, headers=self.huggingface_headers, json=payload)
-                            
-                            # Extract and validate JSON from the response
-                            try:
-                                response_text = response.json()[0]["generated_text"]
-                                # Find JSON content between the last [/INST] and the end
-                                json_text = response_text.split("[/INST]")[-1].strip()
-                                # Try to parse the JSON
-                                segment_mappings = json.loads(json_text)
-                                return segment_mappings
-                            except (json.JSONDecodeError, KeyError, IndexError) as e:
-                                print(f"Error parsing Hugging Face response: {e}")
-                                print(f"Raw response: {response.text}")
-                                # Return empty mapping as fallback
-                                return {}
-                   
-                                       
-                        segment_mappings = json.loads(response.choices[0].message.content)
-                        
-                        for orig_text, trans_text in segment_mappings.items():
-                            if orig_text in translation_map:
-                                translation_map[orig_text] = trans_text
-                            
-                    except Exception as e:
-                        print(f"\tError matching segments for translation map: {e}")
-                        print("Full traceback:")
-                        print(traceback.format_exc())
+                payload = {"inputs": formatted_prompt}
+                response = requests.post(self.HUGGINGFACE_API_URL, headers=self.huggingface_headers, json=payload)
+                
+                # Extract and validate JSON from the response
+                try:
+                    response_text = response.json()[0]["generated_text"]
+                    # Find JSON content between the last [/INST] and the end
+                    json_text = response_text.split("[/INST]")[-1].strip()
+                    # Try to parse the JSON
+                    segment_mappings = json.loads(json_text)
+                    
+                except (json.JSONDecodeError, KeyError, IndexError) as e:
+                    print(f"Error parsing Hugging Face response: {e}")
+                    print(f"Raw response: {response.text}")
+                    # Return empty mapping as fallback
+                    return {}
+        
+            for orig_text, trans_text in segment_mappings.items():
+                if orig_text in translation_map:
+                    translation_map[orig_text] = trans_text
+                
+        except Exception as e:
+            print(f"\tError matching segments for translation map: {e}")
+            print("Full traceback:")
+            print(traceback.format_exc())
         if self.verbose:
             print(f"\tTranslation map: {translation_map}")
         return translation_map
@@ -281,16 +289,20 @@ class SlideTranslator(PowerpointPipeline):
             print(traceback.format_exc())
             return "en-US"  # default to en-US on error
 
-    def process_slides(self, folder_path: str):
+    def process_slides(self, folder_path: str, progress_callback=None):
         """Main function to process all slides in the presentation."""
         slide_files = self.find_slide_files(folder_path)
         selected_slides = ["slide2.xml", "slide3.xml", "slide4.xml"]
-        reduce_slides = False
+        total_slides = len(slide_files)
 
         for slide_file in sorted(slide_files):
             if self.reduce_slides:
                 if os.path.basename(slide_file) not in selected_slides:
                     continue
+
+            current_slide = slide_files.index(slide_file) + 1
+            if progress_callback:
+                progress_callback(os.path.basename(slide_file), current_slide, total_slides)
 
             if self.verbose:
                 print(f"\nProcessing {os.path.basename(slide_file)}...")

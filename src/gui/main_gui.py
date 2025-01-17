@@ -13,13 +13,14 @@ from utils.errorhandler import setup_error_logging
 from utils.config import create_config
 from utils.path_manager import PathManager
 from pipelines.run_merger_pipeline import PowerPointRunMerger
+from gui.settings_window import SettingsWindow
 
 class SlideMobGUI(PowerpointPipeline):
     def __init__(self, root):
         super().__init__()
         self.root = root
         self.root.title("SlideMob PowerPoint Processor")
-        self.root.geometry("700x750")
+        self.root.geometry("700x790")
 
         #Load language codes
         with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_languages.json")) as f:
@@ -31,6 +32,7 @@ class SlideMobGUI(PowerpointPipeline):
         self.gui_output_path = tk.StringVar()
         self.gui_target_language = tk.StringVar(value="English")
         self.gui_style_instructions = tk.StringVar()
+        self.mapping_method = tk.StringVar(value="OpenAI")
         
         # Update the parent class variables whenever GUI vars change
         self.gui_pptx_path.trace_add('write', self._update_pptx_path)
@@ -54,6 +56,12 @@ class SlideMobGUI(PowerpointPipeline):
         app_logo_path = os.path.join(current_dir, "../gui/assets/doppelfahreimer Small Small.png")
         app_logo_path = os.path.abspath(app_logo_path)
         self.app_logo_image = tk.PhotoImage(file=app_logo_path)
+
+        # Load Settings Icon
+        settings_icon_path = os.path.join(current_dir, "../gui/assets/Setting_icon.png")
+        settings_icon_path = os.path.abspath(settings_icon_path)
+        print(f"Looking for settings icon at: {settings_icon_path}")  # Debug print
+        self.settings_icon_image = tk.PhotoImage(file=settings_icon_path)
 
         # Create a bottom frame matching theme background
         bottom_frame = tk.Frame(self.root, bg='#464646')  # equilux theme background color
@@ -106,6 +114,9 @@ class SlideMobGUI(PowerpointPipeline):
         }
 
         self.translation_method = tk.StringVar(value="OpenAI")
+
+        self.processing = False
+        self.stop_requested = False
 
         self.create_widgets()
 
@@ -183,20 +194,27 @@ class SlideMobGUI(PowerpointPipeline):
         translation_frame = ttk.Frame(options_frame)
         translation_frame.pack(fill="x", pady=5)
         
-        ttk.Label(translation_frame, text="Target Language:").pack(side="left")
-        #languages = ["English", "German", "French", "Spanish", "Italian", "Chinese", "Japanese", "Russian","Portuguese","Dutch","Polish"]
+        # Language selection row
+        language_row = ttk.Frame(translation_frame)
+        language_row.pack(fill="x", pady=(0, 5))
         
-        language_dropdown = ttk.Combobox(translation_frame, textvariable=self.gui_target_language, values=self.language_options)
+        ttk.Label(language_row, text="Target Language:").pack(side="left")
+        language_dropdown = ttk.Combobox(language_row, textvariable=self.gui_target_language, values=self.language_options)
         language_dropdown.pack(side="left", padx=5)
         
-        # Translation Method Frame
-        method_frame = ttk.Frame(translation_frame)
-        method_frame.pack(side="left", padx=(20, 0))
-
-        ttk.Label(method_frame, text="Translation Method:").pack(side="left")
-        ttk.Radiobutton(method_frame, text="OpenAI", variable=self.translation_method, value="OpenAI").pack(side="left")
-        ttk.Radiobutton(method_frame, text="Google", variable=self.translation_method, value="Google").pack(side="left")
-        ttk.Radiobutton(method_frame, text="HuggingFace", variable=self.translation_method, value="HuggingFace").pack(side="left")
+        # Methods row
+        methods_row = ttk.Frame(translation_frame)
+        methods_row.pack(fill="x")
+        
+        # Translation Method
+        ttk.Label(methods_row, text="Translation Method:").pack(side="left")
+        self.translation_method_label = ttk.Label(methods_row, textvariable=self.translation_method)
+        self.translation_method_label.pack(side="left", padx=5)
+        
+        # Mapping Method
+        ttk.Label(methods_row, text="Mapping Method:").pack(side="left", padx=(20, 0))
+        self.mapping_method_label = ttk.Label(methods_row, textvariable=self.mapping_method)
+        self.mapping_method_label.pack(side="left", padx=5)
 
         # Style Instructions
         style_frame = ttk.LabelFrame(self.root, text="Style Instructions", padding=10)
@@ -206,17 +224,30 @@ class SlideMobGUI(PowerpointPipeline):
         style_entry = ttk.Entry(style_frame, textvariable=self.gui_style_instructions, width=50)
         style_entry.pack(fill="x", pady=5)
         
-        # Process Button
-        ttk.Button(self.root, text="Process PowerPoint", command=self.process_presentation,style='Blue.TButton').pack(pady=20)
-        
-        # Progress
-        self.progress = ttk.Progressbar(self.root, mode='determinate')
-        self.progress.pack(fill="x", padx=10, pady=5)
+        # Process and Stop Buttons
+        button_frame = ttk.Frame(self.root)
+        button_frame.pack(pady=20)
+
+        self.process_button = ttk.Button(button_frame, text="Process PowerPoint", 
+                                       command=self.process_presentation, style='Blue.TButton')
+        self.process_button.pack(side="left", padx=5)
+
+        self.stop_button = ttk.Button(button_frame, text="Stop", 
+                                     command=self.stop_processing, style='Blue.TButton')
+        self.stop_button.pack(side="left", padx=5)
+        self.stop_button.configure(state="disabled")  # Initially disabled
         
         # Status
         self.status_var = tk.StringVar(value="Ready")
         ttk.Label(self.root, textvariable=self.status_var).pack()
         
+        # Create settings button in top right
+        settings_frame = ttk.Frame(self.root)
+        settings_frame.pack(anchor="ne", padx=5, pady=5)
+        settings_button = ttk.Button(settings_frame, image=self.settings_icon_image, 
+                                   command=self.open_settings, style='Blue.TButton')
+        settings_button.pack(side="right")
+
     def browse_pptx(self):
         filename = filedialog.askopenfilename(
             title="Select PowerPoint File",
@@ -234,28 +265,37 @@ class SlideMobGUI(PowerpointPipeline):
         if folder:
             self.gui_output_path.set(folder)
             
+    def update_translation_progress(self, slide_name, current, total):
+        """Update the status text with current translation progress"""
+        self.status_var.set(f"Translating slide {current} of {total} ({slide_name})")
+        self.root.update()
+
     def process_presentation(self):
         if not self.pptx_path or not self.output_path:
             messagebox.showerror("Error", "Please select both input file and output location")
             return
         
-        # Save GUI config as soon as process button is clicked
-        self.save_gui_config()
+        # Set processing state
+        self.processing = True
+        self.stop_requested = False
+        self.process_button.configure(state="disabled")
+        self.stop_button.configure(state="normal")
+        self.root.update()
         
         try:
-            # Create PathManager instance with the actual path string
-            path_manager = PathManager(self.pptx_path)
+            # Save GUI config as soon as process button is clicked
+            self.save_gui_config()
             
-            # Create config with the updated paths and target language
+            path_manager = PathManager(self.pptx_path)
             config = create_config(
                 path_manager=path_manager,
                 target_language=self.gui_target_language.get()
             )
 
-            self.progress['value'] = 0
-            steps = sum([self.extract_var.get(), self.polish_var.get(), self.translate_var.get(), self.merge_runs_var.get()])
-            step_size = 100 / steps if steps > 0 else 100
-            
+            # Check for stop request between each major step
+            if self.stop_requested:
+                raise Exception("Processing stopped by user")
+
             # Extract
             if self.extract_var.get():
                 self.status_var.set("Extracting PPTX...")
@@ -264,10 +304,10 @@ class SlideMobGUI(PowerpointPipeline):
                 success = self.extract_pptx()
                 if not success:
                     raise Exception("Extraction failed")
-                    
-                self.progress['value'] += step_size
-                self.root.update()
-            
+
+            if self.stop_requested:
+                raise Exception("Processing stopped by user")
+
             # Polish
             if self.polish_var.get():
                 self.status_var.set("Polishing content...")
@@ -280,13 +320,13 @@ class SlideMobGUI(PowerpointPipeline):
                 success = polisher.polish_presentation()
                 if not success:
                     raise Exception("Polishing failed")
-                    
-                self.progress['value'] += step_size
-                self.root.update()
-            
+
+            if self.stop_requested:
+                raise Exception("Processing stopped by user")
+
             # Translate
             if self.translate_var.get():
-                self.status_var.set("Translating content...")
+                self.status_var.set("Starting translation...")
                 self.root.update()
                 
                 translator = PowerPointTranslator(
@@ -294,18 +334,20 @@ class SlideMobGUI(PowerpointPipeline):
                     Further_StyleInstructions=self.gui_style_instructions.get(),
                     update_language=self.update_language.get(),
                     fresh_extract=not (self.extract_var.get() or self.polish_var.get()),
-                    translation_method=self.translation_method.get()
+                    translation_method=self.translation_method.get(),
+                    mapping_method=self.mapping_method.get()
                 )
-                success = translator.translate_presentation()
+                success = translator.translate_presentation(
+                    progress_callback=self.update_translation_progress
+                )
                 if not success:
                     print("Full traceback:")
                     print(traceback.format_exc())
                     raise Exception("Translation failed")
 
-                    
-                self.progress['value'] += step_size
-                self.root.update()
-            
+            if self.stop_requested:
+                raise Exception("Processing stopped by user")
+
             # Add run merging step
             if self.merge_runs_var.get():
                 self.status_var.set("Merging similar runs...")
@@ -319,10 +361,7 @@ class SlideMobGUI(PowerpointPipeline):
                 success = merger.merge_runs_in_presentation()
                 if not success:
                     raise Exception("Run merging failed")
-                    
-                self.progress['value'] += step_size
-                self.root.update()
-            
+
             self.status_var.set("Processing complete!")
             messagebox.showinfo("Success", "PowerPoint processing completed successfully!")
             
@@ -353,6 +392,7 @@ class SlideMobGUI(PowerpointPipeline):
                 self.gui_target_language.set(config.get('target_language', 'English'))
                 self.translation_method.set(config.get('translation_method', 'OpenAI'))
                 self.gui_style_instructions.set(config.get('style_instructions', ''))
+                self.mapping_method.set(config.get('mapping_method', 'OpenAI'))
                 
                 # Load path settings if they exist
                 if 'pptx_path' in config:
@@ -375,6 +415,7 @@ class SlideMobGUI(PowerpointPipeline):
                 'reduce_slides': self.reduce_slides.get(),
                 'target_language': self.gui_target_language.get(),
                 'translation_method': self.translation_method.get(),
+                'mapping_method': self.mapping_method.get(),
                 'style_instructions': self.gui_style_instructions.get(),
                 'pptx_path': self.gui_pptx_path.get(),
                 'output_folder': self.gui_output_path.get()
@@ -385,6 +426,16 @@ class SlideMobGUI(PowerpointPipeline):
                 json.dump(config, f, indent=4)
         except Exception as e:
             logging.warning(f"Could not save GUI config: {str(e)}")
+
+    def open_settings(self):
+        """Open the settings window"""
+        settings = SettingsWindow(self)
+
+    def stop_processing(self):
+        if self.processing:
+            self.stop_requested = True
+            self.status_var.set("Stopping...")
+            self.root.update()
 
 if __name__ == "__main__":
     root = tk.Tk()
