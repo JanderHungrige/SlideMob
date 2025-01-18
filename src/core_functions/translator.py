@@ -10,7 +10,9 @@ from .base_class import PowerpointPipeline
 import os
 import re
 import traceback
-from utils.promts import translation_prompt_openai_0, translation_prompt_openai_1, translation_prompt_huggingface_llama2_0, translation_prompt_huggingface_llama2_1
+from utils.promts import (translation_prompt_openai_0, translation_prompt_openai_1, 
+                         translation_prompt_llama2_0, translation_prompt_llama2_1,
+                         mapping_prompt_openai, mapping_prompt_llama2)
 
 class TranslationResponse(BaseModel):
     translation: str
@@ -25,7 +27,8 @@ class SlideTranslator(PowerpointPipeline):
                  translation_method: str = "OpenAI",
                  mapping_method: str = "OpenAI"): 
 
-        super().__init__()
+        # Call parent class initialization with the mapping method
+        super().__init__(translation_client=translation_method, mapping_client=mapping_method)
 
         self.target_language = target_language
         self.Further_StyleInstructions = Further_StyleInstructions
@@ -34,11 +37,24 @@ class SlideTranslator(PowerpointPipeline):
         self.verbose = verbose
         self.translation_method = translation_method
         self.mapping_method = mapping_method
+
         # Load language codes mapping
         config_languages_path = os.path.join(self.root_folder, "src", "config_languages.json")
         with open(config_languages_path, "r") as f:
             self.language_codes = json.load(f)
 
+        # Load LMStudio settings from config if needed
+        if translation_method == "LMStudio" or mapping_method == "LMStudio":
+            gui_config_path = os.path.join(self.root_folder, "src/config_gui.json")
+            with open(gui_config_path, "r") as f:
+                config = json.load(f)
+                
+            base_url = config.get("lmstudio_server", "http://localhost:1234")
+            self.LMSTUDIO_API_URL = f"{base_url.rstrip('/')}/v1/chat/completions"
+            self.lmstudio_model = config.get("lmstudio_model_api", "")
+            self.lmstudio_headers = {
+                "Content-Type": "application/json"
+            }
 
     def create_translation_map(self, text_elements: List[ET.Element], original_text_elements: set) -> dict:
         """Create a mapping between original text and their translations."""
@@ -64,6 +80,9 @@ class SlideTranslator(PowerpointPipeline):
                         translated_text = self.translate_text_google(self.original_text)
                     elif self.translation_method == "HuggingFace":
                         translated_text = self.translate_text_huggingface(self.original_text)
+                    elif self.translation_method == "LMStudio":
+                        translated_text = self.translate_text_lmstudio(self.original_text)
+    
                     if self.verbose:     
                         print(f"\tOriginal paragraph: {self.original_text}")
                         print(f"\tTranslated paragraph: {translated_text}\n")
@@ -106,7 +125,7 @@ class SlideTranslator(PowerpointPipeline):
         prompt_1 = translation_prompt_openai_1(text, self.target_language, self.Further_StyleInstructions)
                 
         try:
-            response = self.translation_client.chat.completions.create(
+            response = self.trans_client.chat.completions.create(
                 model=self.model,
                     messages=[
                         {"role": "system", "content": "You are a professional translator."},
@@ -159,13 +178,12 @@ class SlideTranslator(PowerpointPipeline):
         async def translate_text():
             async with Translator() as translator:
                 self.result = await translator.translate(text, dest=google_lang_code)
-        
         asyncio.run(translate_text())
         return self.result.text
     
     def translate_text_huggingface(self, text: str) -> str:
-        prompt_0 = translation_prompt_huggingface_llama2_0(text, self.target_language, self.Further_StyleInstructions)
-        prompt_1 = translation_prompt_huggingface_llama2_1(text, self.target_language, self.Further_StyleInstructions)
+        prompt_0 = translation_prompt_llama2_0(text, self.target_language, self.Further_StyleInstructions)
+        prompt_1 = translation_prompt_llama2_1(text, self.target_language, self.Further_StyleInstructions)
 
         payload = {"inputs": prompt_0}
         response = requests.post(self.HUGGINGFACE_API_URL, headers=self.huggingface_headers, json=payload)
@@ -187,22 +205,53 @@ class SlideTranslator(PowerpointPipeline):
             # Return empty mapping as fallback
             return {}
  
-
+    def translate_text_lmstudio(self, text: str) -> str:
+        """Translate text using local LMStudio server."""
+        prompt_0 = translation_prompt_llama2_0(text, self.target_language, self.Further_StyleInstructions)
+        
+        payload = {
+            "messages": [
+                {"role": "system", "content": "You are a professional translator."},
+                {"role": "user", "content": prompt_0}
+            ],
+            "model": self.lmstudio_model,
+            "temperature": 0.3
+        }
+        
+        try:
+            response = requests.post(
+                self.LMSTUDIO_API_URL,
+                headers=self.lmstudio_headers,
+                json=payload
+            )
+            response.raise_for_status()
+            
+            response_data = response.json()
+            content = response_data['choices'][0]['message']['content']
+            
+            # Extract text between <translation> tags
+            translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
+            if translation_match:
+                if self.verbose:
+                    print(f"\tTranslation match: {translation_match.group(1).strip()}")
+                return translation_match.group(1).strip()
+            return text
+            
+        except Exception as e:
+            print(f"Translation error with LMStudio: {e}")
+            print("Full traceback:")
+            print(traceback.format_exc())
+            return text
+    
     def _create_mapping_map(self, original_text_elements: set, translated_text: str, translation_map: dict) -> dict:
         """Create a mapping between original text and their translations."""
 
         try:
             if self.mapping_method == "OpenAI":
-                prompt = f"""Match each original text segment with its corresponding part from the translation.
-                    Original segments: {[text for text in original_text_elements]}
-                    Full original text: {self.original_text}
-                    Full translation: {translated_text}
-                    
-                    Return a JSON object where keys are the original segments and values are their corresponding translations.
-                    Only include segments that appear in the original text."""
+                prompt = mapping_prompt_openai(original_text_elements, self.original_text, translated_text)
                 
-                response = self.mapping_client.chat.completions.create(
-                    model=self.pydentic_model,
+                response = self.map_client.chat.completions.create(
+                    model=self.mapping_model,
                     messages=[
                         {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
                         {"role": "user", "content": prompt}
@@ -218,22 +267,7 @@ class SlideTranslator(PowerpointPipeline):
                 Your task is to return a JSON object mapping original text segments to their translations.
                 The output must be valid JSON with the original segments as keys and translations as values."""
                 
-                formatted_prompt = f"""<s>[INST] <<SYS>>
-                {system_prompt}
-                <</SYS>>
-                
-                Original segments: {[text for text in original_text_elements]}
-                Full original text: {self.original_text}
-                Full translation: {translated_text}
-                
-                Return a JSON object where keys are the original segments and values are their corresponding translations.
-                Only include segments that appear in the original text.
-                
-                Format your response as valid JSON like this:
-                {{
-                    "original_text_1": "translated_text_1",
-                    "original_text_2": "translated_text_2"
-                }}[/INST]"""
+                formatted_prompt = mapping_prompt_llama2(original_text_elements, self.original_text, translated_text)
 
                 payload = {"inputs": formatted_prompt}
                 response = requests.post(self.HUGGINGFACE_API_URL, headers=self.huggingface_headers, json=payload)
@@ -251,10 +285,51 @@ class SlideTranslator(PowerpointPipeline):
                     print(f"Raw response: {response.text}")
                     # Return empty mapping as fallback
                     return {}
-        
+                
+            elif self.mapping_method == "LMStudio":
+                # Use existing LMStudio implementation
+                system_prompt = """You are a professional text alignment expert, editor and translator.
+                Your task is to return a JSON object mapping original text segments to their translations.
+                The output must be valid JSON with the original segments as keys and translations as values."""
+                
+                formatted_prompt = mapping_prompt_llama2(original_text_elements, self.original_text, translated_text)
+
+                payload = {
+                    "messages": [
+                        {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
+                        {"role": "user", "content": formatted_prompt}
+                    ],
+                    "model": self.lmstudio_model,
+                    "temperature": 0.3
+                }
+                
+                try:
+                    response = requests.post(
+                        self.LMSTUDIO_API_URL,
+                        headers=self.lmstudio_headers,
+                        json=payload
+                    )
+                    response.raise_for_status()
+                    
+                    response_data = response.json()
+                    content = response_data['choices'][0]['message']['content']
+                    
+                    # Find JSON content between the last [/INST] and the end
+                    json_text = content.split("[/INST]")[-1].strip()
+                    # Try to parse the JSON
+                    segment_mappings = json.loads(json_text)
+                    
+                except (json.JSONDecodeError, KeyError, IndexError, requests.RequestException) as e:
+                    print(f"Error parsing LMStudio response: {e}")
+                    print(f"Raw response: {response.text if 'response' in locals() else 'No response'}")
+                    # Return empty mapping as fallback
+                    return {}
+            
             for orig_text, trans_text in segment_mappings.items():
                 if orig_text in translation_map:
                     translation_map[orig_text] = trans_text
+
+
                 
         except Exception as e:
             print(f"\tError matching segments for translation map: {e}")

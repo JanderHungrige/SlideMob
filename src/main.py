@@ -6,12 +6,34 @@ import argparse  # Add this import
 from utils.config import create_config
 from utils.path_manager import PathManager
 from pipelines.run_merger_pipeline import PowerPointRunMerger
+from openai import OpenAI
 
 
 # from slidemob.utils.errorhandler import setup_error_logging
 
 # # Initialize error logging
 # setup_error_logging()
+
+def check_rate_limits():
+    """Check OpenAI API rate limits by making a minimal API call."""
+    try:
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": "hi"}]
+        )
+        
+        # Access response headers through response._raw_response
+        headers = response._raw_response.headers
+        print("\nOpenAI Rate Limits:")
+        print(f"Requests/min: {headers.get('x-ratelimit-limit-requests')}")
+        print(f"Tokens/min: {headers.get('x-ratelimit-limit-tokens')}")
+        print(f"Remaining Requests: {headers.get('x-ratelimit-remaining-requests')}")
+        print(f"Remaining Tokens: {headers.get('x-ratelimit-remaining-tokens')}")
+        print(f"Reset Timestamp: {headers.get('x-ratelimit-reset-tokens')}\n")
+        
+    except Exception as e:
+        print(f"Error checking rate limits: {e}")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -36,8 +58,16 @@ def main():
         choices=['German', 'French', 'Spanish', 'Italian','English'],  # Add your supported languages
         help='Target language for translation (default: %(default)s)'
     )
+    parser.add_argument(
+        '--check-limits',
+        action='store_true',
+        help='Check OpenAI API rate limits'
+    )
     args = parser.parse_args()
 
+    if args.check_limits:
+        check_rate_limits()
+        return
 
     if args.testing:
         input_file = args.input if args.input else os.path.join(os.path.dirname(__file__), "Testpptx/CV_Jan_Werth_DE_2024-10-23.pptx")
@@ -62,6 +92,7 @@ def main():
             print(f"Error in pipeline: {str(e)}")
 
     else:
+        #check_rate_limits()
         # GUI
         root = tk.Tk()
         app = SlideMobGUI(root)

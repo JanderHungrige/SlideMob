@@ -1,0 +1,18 @@
+
+=== Error Report [2025-01-18 22:41:15] ===
+Type: AttributeError
+Message: 'SlideMobGUI' object has no attribute 'language_options'
+Traceback:
+  File "/Users/jwh/Code/slidemob/src/main.py", line 102, in <module>
+    main()
+    ~~~~^^
+  File "/Users/jwh/Code/slidemob/src/main.py", line 98, in main
+    app = SlideMobGUI(root)
+  File "/Users/jwh/Code/slidemob/src/gui/main_gui.py", line 120, in __init__
+    self.create_widgets()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/jwh/Code/slidemob/src/gui/main_gui.py", line 201, in create_widgets
+    language_dropdown = ttk.Combobox(language_row, textvariable=self.gui_target_language, values=self.language_options)
+                                                                                                 ^^^^^^^^^^^^^^^^^^^^^
+
+==============================

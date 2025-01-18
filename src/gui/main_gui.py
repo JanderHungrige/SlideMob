@@ -19,20 +19,30 @@ class SlideMobGUI(PowerpointPipeline):
     def __init__(self, root):
         super().__init__()
         self.root = root
+        tk.Tk.report_callback_exception = self.show_error
         self.root.title("SlideMob PowerPoint Processor")
         self.root.geometry("700x790")
+        
+        # Initialize LMStudio settings
 
-        #Load language codes
+        
+        # Load language codes first
         with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_languages.json")) as f:
             language_config = json.load(f)
         self.language_options = [lang["language"].split(" (")[0] for lang in language_config["languages"]]
-            
-        # GUI Variables (StringVar)
-        self.gui_pptx_path = tk.StringVar()
-        self.gui_output_path = tk.StringVar()
-        self.gui_target_language = tk.StringVar(value="English")
-        self.gui_style_instructions = tk.StringVar()
-        self.mapping_method = tk.StringVar(value="OpenAI")
+        
+        # Initialize tk variables
+        self.gui_pptx_path = tk.StringVar(self.root)
+        self.gui_output_path = tk.StringVar(self.root)
+        self.gui_target_language = tk.StringVar(self.root, value="English")
+        self.gui_style_instructions = tk.StringVar(self.root)
+        self.translation_method = tk.StringVar(self.root, value="OpenAI")
+        self.mapping_method = tk.StringVar(self.root, value="OpenAI")
+        self.openai_model = tk.StringVar(self.root, value="gpt-4")
+        self.mapping_model = tk.StringVar(self.root, value="gpt-4")
+        
+        self.lmstudio_server = "http://localhost:1234"
+        self.lmstudio_model_api = ""
         
         # Update the parent class variables whenever GUI vars change
         self.gui_pptx_path.trace_add('write', self._update_pptx_path)
@@ -386,6 +396,13 @@ class SlideMobGUI(PowerpointPipeline):
                 with open(config_path, 'r') as f:
                     config = json.load(f)
                     
+                # Add loading of OpenAI model
+                self.openai_model = config.get('openai_model', 'gpt-4')
+                
+                # Add loading of LMStudio settings
+                self.lmstudio_server = config.get('lmstudio_server', 'http://localhost:1234')
+                self.lmstudio_model_api = config.get('lmstudio_model_api', '')
+                
                 # Set GUI variables from config
                 self.extract_var.set(config.get('extract_pptx', True))
                 self.merge_runs_var.set(config.get('pre_merge', False))
@@ -422,7 +439,10 @@ class SlideMobGUI(PowerpointPipeline):
                 'mapping_method': self.mapping_method.get(),
                 'style_instructions': self.gui_style_instructions.get(),
                 'pptx_path': self.gui_pptx_path.get(),
-                'output_folder': self.gui_output_path.get()
+                'output_folder': self.gui_output_path.get(),
+                'openai_model': self.openai_model,
+                'lmstudio_server': self.lmstudio_server,
+                'lmstudio_model_api': self.lmstudio_model_api
             }
             
             config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_gui.json")
@@ -433,13 +453,49 @@ class SlideMobGUI(PowerpointPipeline):
 
     def open_settings(self):
         """Open the settings window"""
-        settings = SettingsWindow(self)
+        settings = SettingsWindow(self.root, self)
 
     def stop_processing(self):
         if self.processing:
             self.stop_requested = True
             self.status_var.set("Stopping...")
             self.root.update()
+
+    def get_config_value(self, key, default=""):
+        """Get a value from the config file"""
+        try:
+            with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_gui.json")) as f:
+                config = json.load(f)
+                return config.get(key, default)
+        except Exception as e:
+            print(f"Error reading config: {e}")
+            return default
+            
+    def update_config(self, new_values):
+        """Update the config with new values"""
+        try:
+            config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_gui.json")
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            
+            # Update config with new values
+            config.update(new_values)
+            
+            # Update class variables from settings window
+            self.lmstudio_server = new_values.get('lmstudio_server', self.lmstudio_server)
+            self.lmstudio_model_api = new_values.get('lmstudio_model', self.lmstudio_model_api)
+            
+            # Save updated config
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=4)
+                
+        except Exception as e:
+            print(f"Error updating config: {e}")
+
+    def show_error(self, exc, val, tb):
+        """Show error message in a dialog"""
+        err = traceback.format_exception(exc, val, tb)
+        messagebox.showerror("Error", f"An error occurred:\n{''.join(err)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
