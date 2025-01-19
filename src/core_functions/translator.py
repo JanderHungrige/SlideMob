@@ -87,7 +87,7 @@ class SlideTranslator(PowerpointPipeline):
                         print(f"\tOriginal paragraph: {self.original_text}")
                         print(f"\tTranslated paragraph: {translated_text}\n")
 
-        translation_map = self._create_mapping_map(original_text_elements, translated_text, translation_map)
+                    translation_map = self._create_mapping_map(original_text_elements, translated_text, translation_map)
         return translation_map
 
     def analyze_text(self, text: str) -> str:  
@@ -288,10 +288,6 @@ class SlideTranslator(PowerpointPipeline):
                 
             elif self.mapping_method == "LMStudio":
                 # Use existing LMStudio implementation
-                system_prompt = """You are a professional text alignment expert, editor and translator.
-                Your task is to return a JSON object mapping original text segments to their translations.
-                The output must be valid JSON with the original segments as keys and translations as values."""
-                
                 formatted_prompt = mapping_prompt_llama2(original_text_elements, self.original_text, translated_text)
 
                 payload = {
@@ -329,8 +325,6 @@ class SlideTranslator(PowerpointPipeline):
                 if orig_text in translation_map:
                     translation_map[orig_text] = trans_text
 
-
-                
         except Exception as e:
             print(f"\tError matching segments for translation map: {e}")
             print("Full traceback:")
@@ -410,7 +404,7 @@ class SlideTranslator(PowerpointPipeline):
                     print("\nProcessing stopped by user")
                     return False
 
-                if not translation.strip():  # Skip empty translations
+                if translation==None:  # Skip empty translations
                     continue
                 #Update Text
                 for element in root.findall('.//a:t', self.namespaces):
