@@ -1,0 +1,18 @@
+
+=== Error Report [2025-01-19 22:03:01] ===
+Type: AttributeError
+Message: 'SlideMobGUI' object has no attribute 'read_in_pptx'
+Traceback:
+  File "/Users/jwh/Code/slidemob/src/main.py", line 102, in <module>
+    main()
+    ~~~~^^
+  File "/Users/jwh/Code/slidemob/src/main.py", line 98, in main
+    app = SlideMobGUI(root)
+  File "/Users/jwh/Code/slidemob/src/gui/main_gui.py", line 130, in __init__
+    self.create_widgets()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/jwh/Code/slidemob/src/gui/main_gui.py", line 188, in create_widgets
+    command=self.read_in_pptx, style='Blue.TButton')
+            ^^^^^^^^^^^^^^^^^
+
+==============================
