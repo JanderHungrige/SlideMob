@@ -37,11 +37,24 @@ SlideMob interacts with your PPT files and performes actions such as translating
 
 [*Poetry*](https://python-poetry.org) is used as package/dependency manager as well as for handling the virtual environment into which the dependencies are installed.
 
+Install tkinter via brew (restart maybe required)
+
+    brew install python-tk
+
+Install [LM Studio](https://lmstudio.ai/) via their website and the CLI via terminal
+
+    npx lmstudio install-cli
+
+After you have installed a model of your choice, you can start the server and load the model
+
+    lms server start
+    lms load
+
 Enter the repository's root folder
 
     cd slidemob/
 
-Create the virtual environment and install the dependencies - including the optional dependencies for development and testing - by using [*Poetry*](https://python-poetry.org/docs/basic-usage/):
+Create the virtual environment and install the dependencies - including the optional dependencies for development and testing - by using [*Poetry*](https://python-poetry.org/docs/basic-usage/) (make sure to be on a more recent version, there were some errors with poetry < 2):
 
     poetry install
 
