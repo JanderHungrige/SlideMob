@@ -38,7 +38,7 @@ class SlideMobGUI(PowerpointPipeline):
         self.gui_style_instructions = tk.StringVar(self.root)
         self.translation_method = tk.StringVar(self.root, value="OpenAI")
         self.mapping_method = tk.StringVar(self.root, value="OpenAI")
-        self.openai_model = tk.StringVar(self.root, value="gpt-4")
+        self.translation_model = tk.StringVar(self.root, value="gpt-4")
         self.mapping_model = tk.StringVar(self.root, value="gpt-4")
         
         self.lmstudio_server = "http://localhost:1234"
@@ -437,7 +437,7 @@ class SlideMobGUI(PowerpointPipeline):
                     config = json.load(f)
                     
                 # Add loading of OpenAI model
-                self.openai_model = config.get('openai_model', 'gpt-4')
+                self.translation_model = config.get('translation_model', 'gpt-4')
                 
                 # Add loading of LMStudio settings
                 self.lmstudio_server = config.get('lmstudio_server', 'http://localhost:1234')
@@ -480,7 +480,8 @@ class SlideMobGUI(PowerpointPipeline):
                 'style_instructions': self.gui_style_instructions.get(),
                 'pptx_path': self.gui_pptx_path.get(),
                 'output_folder': self.gui_output_path.get(),
-                'openai_model': self.openai_model,
+                'translation_model': self.translation_model.get(),
+                'mapping_model': self.mapping_model.get(),
                 'lmstudio_server': self.lmstudio_server,
                 'lmstudio_model_api': self.lmstudio_model_api
             }

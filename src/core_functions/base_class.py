@@ -8,14 +8,17 @@ from utils.path_manager import PathManager, get_initial_config_path
 import zipfile
 dotenv.load_dotenv()
 import traceback
+from utils.model_settings import ModelSettings
 
 
 class PowerpointPipeline:
     def __init__(self, 
-                 model: str = None, 
-                 pydentic_model: str = "gpt-4-turbo-preview",
                  translation_client:str = "OpenAI", 
                  mapping_client:str = "OpenAI",
+                 translation_model: str = "gpt-4",
+                 mapping_model: str = "gpt-4",
+                 lmstudio_server: str = "http://localhost:1234",
+                 huggingface_url: str = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf",
                  verbose: bool=False,
                  extract_namespaces: bool=False,
                  namespaces: dict={'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
@@ -27,14 +30,10 @@ class PowerpointPipeline:
                                    'v':"urn:schemas-microsoft-com:vml"
                                    },
                  ):
-        #load config file
+        # Load config file
         with open(get_initial_config_path(), "r") as f:
             self.config = json.load(f)
         
-        gui_config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_gui.json")
-        with open(gui_config_path, "r") as f:
-            gui_config = json.load(f)
-
         self.root_folder = self.config["root_folder"]
         self.pptx_folder = self.config["pptx_folder"]
         self.pptx_path = self.config["pptx_name"]
@@ -42,59 +41,29 @@ class PowerpointPipeline:
         self.output_folder = self.config["output_folder"]
         self.output_pptx = self.config["output_pptx"]
         self.target_language = self.config["target_language"]
-     
-        self.openai_api_key = os.getenv("OPENAI_API_KEY")
-        self.huggingface_api_key = os.getenv("HUGGINGFACE")
-        self.model = model or gui_config.get("openai_model", "gpt-4")
-        self.pydentic_model=pydentic_model
-        self.translation_client = translation_client
-        self.mapping_client = mapping_client
+
+        # Initialize model settings
+        model_settings = ModelSettings()
+        
+        # Copy relevant attributes from model settings
+        self.translation_client = model_settings.translation_client
+        self.mapping_client = model_settings.mapping_client
+        self.translation_model = model_settings.translation_model
+        self.mapping_model = model_settings.mapping_model
+        self.translation_method = model_settings.translation_method
+        self.mapping_method = model_settings.mapping_method
+        self.lmstudio_server = model_settings.lmstudio_server
+        self.huggingface_url = model_settings.huggingface_url
+        
         self.extract_namespaces = extract_namespaces
-        self.namespaces =namespaces 
+        self.namespaces = namespaces 
 
         self.paths = PathManager(input_file=self.pptx_path) #overall msanaged paths
 
         if verbose: print(f"\tPPTX path: {self.pptx_path}")
         if verbose: print(f"\tExtract path: {self.extract_path}")
         if verbose: print(f"\tOutput folder: {self.output_folder}")
-
-
-        if self.translation_client == "OpenAI":
-            self.trans_client = OpenAI(api_key=self.openai_api_key)
-            
-        elif self.translation_client == "HuggingFace":
-            self.trans_client = None
-            self.HUGGINGFACE_API_URL = gui_config.get(
-                "huggingface_url", 
-                "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf"
-            )
-            self.huggingface_headers = {"Authorization": "Bearer " + self.huggingface_api_key}
-        elif self.translation_client == "LMStudio":
-            self.trans_client = None
-            
-            # Load LMStudio settings from config
-            with open(os.path.join(self.root_folder, "src/config_gui.json"), "r") as f:
-                config = json.load(f)
-                
-            self.LMSTUDIO_API_URL = config.get("lmstudio_server", "http://localhost:1234")
-            self.lmstudio_model = config.get("lmstudio_model", "")
-            self.lmstudio_headers = {
-                "Content-Type": "application/json"
-            }
-        else:
-            print("\tClient not supported for translation(So far only OpenAI and HuggingFace are supported)")
-        pass
-
-        if self.mapping_client == "OpenAI":
-            self.map_client = OpenAI(api_key=self.openai_api_key)
-            self.mapping_model = gui_config.get("mapping_model", "gpt-4")
-        elif self.mapping_client == "HuggingFace":
-            self.map_client= None
-            self.HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf"
-            self.huggingface_headers = {"Authorization": "Bearer " + self.huggingface_api_key}
-        else:
-            print("\tClient not supported for mapping(So far only HuggingFace is supported)")
-      
+        
     def find_slide_files(self, root_folder: str) -> List[str]:
         """Find all slide XML files in the folder structure."""
         slide_files = []

@@ -6,12 +6,15 @@
     "update_language": false,
     "reduce_slides": false,
     "target_language": "German",
-    "translation_method": "Google",
+    "translation_method": "LMStudio",
     "mapping_method": "LMStudio",
     "style_instructions": "",
     "pptx_path": "/Users/jwh/Downloads/SLIDEMOBTEST.pptx",
     "output_folder": "/Users/jwh/Downloads",
-    "openai_model": "gpt-4",
+    "translation_model": "gpt-4o",
+    "mapping_model": "gpt-4o",
     "lmstudio_server": "http://localhost:1234",
-    "lmstudio_model_api": "llama-3.2-3b-instruct"
+    "lmstudio_model_api": "llama-3.2-3b-instruct",
+    "huggingface_url": "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf",
+    "lmstudio_model": "llama-3.2-3b-instruct"
 }

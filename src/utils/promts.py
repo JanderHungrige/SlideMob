@@ -157,3 +157,66 @@ def mapping_prompt_llama2(original_segments, original_text, translated_text):
         "original_text_1": "translated_text_1",
         "original_text_2": "translated_text_2"
     }}[/INST]"""
+
+def translation_prompt_deepseek_0(text, target_language, Further_StyleInstructions):
+    return f"""You are an expert translator specializing in precise, technical translations. Translate the following text to {target_language}.
+
+Input Text:
+{text}
+
+Translation Requirements:
+1. Maintain similar character length
+2. Preserve exactly:
+   - All technical terms
+   - Role names (e.g., DataScientist, CEO)
+   - Company names (e.g., Apple, Microsoft)
+   - Product names (e.g., iPhone, Windows, LegalAI)
+   - Special formatting and symbols
+3. Style:
+   - Sharp and business-like tone
+   - Concise phrasing
+   - {Further_StyleInstructions}
+
+Process:
+1. First provide your analysis:
+<analysis>
+- Key terms to preserve: [list them]
+- Initial translation of 2-3 key phrases
+- Character count comparison
+- Style considerations
+</analysis>
+
+2. Then provide ONLY the final translation:
+<translation>
+[Your translation here]
+</translation>
+
+Critical: Return ONLY the content within the <translation> tags as your final output."""
+
+def mapping_prompt_deepseek(original_segments, original_text, translated_text):
+    return f"""You are a text alignment specialist. Map each original segment to its corresponding translation.
+
+Input:
+Original segments: {[text for text in original_segments]}
+
+Context:
+Original text: {original_text}
+Translated text: {translated_text}
+
+Task:
+1. Find each original segment in the original text
+2. Identify its corresponding part in the translation
+3. Create a mapping as JSON
+
+Requirements:
+- Only include segments that appear in the original text
+- Maintain exact matches for technical terms
+- Preserve formatting in the translations
+
+Return a valid JSON object with this structure:
+{{
+    "original_segment": "translated_segment",
+    ...
+}}
+
+Important: Provide ONLY the JSON output, no explanations."""

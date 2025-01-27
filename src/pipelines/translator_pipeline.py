@@ -5,15 +5,32 @@ import os
 import traceback
 
 class PowerPointTranslator(PowerpointPipeline):
-    def __init__(self, target_language:str, Further_StyleInstructions:str="None", update_language:bool=False, fresh_extract:bool=True, verbose:bool=False, reduce_slides:bool=False, translation_method:str="OpenAI", mapping_method:str="OpenAI"):
-        super().__init__(),
+    def __init__(self, target_language:str, Further_StyleInstructions:str="None", 
+                 update_language:bool=False, fresh_extract:bool=True, verbose:bool=False, 
+                 reduce_slides:bool=False, translation_method:str="OpenAI", 
+                 mapping_method:str="OpenAI"):
+        # Initialize base class first to set up ModelSettings
+        super().__init__(translation_client=translation_method, 
+                         mapping_client=mapping_method
+                         )
+        
         self.fresh_extract = fresh_extract
         self.verbose = verbose
         self.reduce_slides = reduce_slides
         self.translation_method = translation_method
         self.mapping_method = mapping_method
-        # Initialize transformer and translator
-        self.translator = SlideTranslator(target_language, Further_StyleInstructions, update_language, reduce_slides, verbose, translation_method, mapping_method)
+        
+        # Pass the model settings attributes to SlideTranslator
+        self.translator = SlideTranslator(
+            target_language=target_language, 
+            Further_StyleInstructions=Further_StyleInstructions, 
+            update_language=update_language, 
+            reduce_slides=reduce_slides, 
+            verbose=verbose, 
+            translation_method=translation_method, 
+            mapping_method=mapping_method,
+            model_settings=self
+        )
 
     def translate_presentation(self, progress_callback=None, stop_check_callback=None):
         """Main method to handle the full translation process"""

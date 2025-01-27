@@ -167,13 +167,13 @@ class SettingsWindow:
         if not self.huggingface_key.get().startswith('*'):
             set_key(env_path, "HUGGINGFACE", self.huggingface_key.get())
         
-        # Save LMStudio settings to config
+        # Save settings to config
         config = {
             "lmstudio_server": self.lmstudio_server.get(),
             "lmstudio_model": self.lmstudio_model.get(),
             "translation_method": self.translation_method.get(),
             "mapping_method": self.mapping_method.get(),
-            "openai_model": self.openai_model.get(),
+            "translation_model": self.translation_model.get(),
             "mapping_model": self.mapping_model.get(),
             "huggingface_url": self.huggingface_url.get()
         }
@@ -190,20 +190,6 @@ class SettingsWindow:
         
         messagebox.showinfo("Success", "Settings saved successfully!")
         self.root.destroy()
-        if not self.openai_key.get().startswith('*'):
-            set_key(env_path, "OPENAI_API_KEY", self.openai_key.get())
-        if not self.huggingface_key.get().startswith('*'):
-            set_key(env_path, "HUGGINGFACE", self.huggingface_key.get())
-        
-        # Update parent's translation and mapping methods
-        self.parent.translation_method.set(self.translation_method.get())
-        self.parent.mapping_method.set(self.mapping_method.get())
-        
-        # Save all GUI settings immediately using parent's save method
-        self.parent.save_gui_config()
-        
-        #messagebox.showinfo("Success", "Settings saved successfully!")
-        self.root.destroy()
 
     def load_settings(self):
         """Load settings from environment variables and config"""
@@ -213,7 +199,7 @@ class SettingsWindow:
         # Load other settings from parent's config
         self.translation_method = tk.StringVar(value=self.parent.translation_method.get())
         self.mapping_method = tk.StringVar(value=self.parent.mapping_method.get())
-        self.openai_model = tk.StringVar(value=self.parent.get_config_value("openai_model", "gpt-4"))
+        self.translation_model = tk.StringVar(value=self.parent.get_config_value("translation_model", "gpt-4"))
         self.mapping_model = tk.StringVar(value=self.parent.get_config_value("mapping_model", "gpt-4"))
         self.lmstudio_server = tk.StringVar(value=self.parent.get_config_value("lmstudio_server", "http://localhost:1234"))
         self.lmstudio_model = tk.StringVar(value=self.parent.get_config_value("lmstudio_model", ""))
@@ -254,45 +240,79 @@ class SettingsWindow:
         self.huggingface_entry.bind('<FocusOut>', lambda e: self.mask_field(self.huggingface_key, self.huggingface_api_key))
         
         # Translation Method Section
-        translation_frame = ttk.LabelFrame(self.main_frame, text="Translation Settings", 
-                                         padding="5", style='Small.TLabelframe')
+        translation_frame = ttk.LabelFrame(self.main_frame, text="Translation Settings", padding="5")
         translation_frame.pack(fill="x", pady=5)
         
-        # Translation Method
         ttk.Label(translation_frame, text="Translation Method:").pack(anchor="w")
-        self.translation_method = tk.StringVar(value=self.parent.translation_method.get())
         for method in ["OpenAI", "Google", "HuggingFace", "LMStudio"]:
-            method_frame = ttk.Frame(translation_frame)
-            method_frame.pack(anchor="w", fill="x", pady=1)  # Reduced padding
-            
-            ttk.Radiobutton(method_frame, text=method, variable=self.translation_method, 
-                           value=method, style='Small.TRadiobutton').pack(side="left")
+            ttk.Radiobutton(translation_frame, text=method, variable=self.translation_method, 
+                           value=method).pack(anchor="w")
         
-        # OpenAI Model Selection Frame
-        self.openai_model_frame = ttk.Frame(translation_frame)
-        self.openai_model_frame.pack(fill="x", pady=5)
-        ttk.Label(self.openai_model_frame, text="Model:", style='Small.TLabel').pack(side="left")
-        self.openai_model = tk.StringVar(value=self.parent.get_config_value("openai_model", "gpt-4"))
-        self.openai_model_dropdown = ttk.Combobox(
-            self.openai_model_frame, 
-            textvariable=self.openai_model,
+        # Method-specific Translation Settings
+        self.translation_settings_frame = ttk.LabelFrame(self.main_frame, text="Method-Specific Translation Settings", 
+                                               padding="5", style='Small.TLabelframe')
+        self.translation_settings_frame.pack(fill="x", pady=5)
+        
+        # OpenAI Translation Settings
+        self.openai_translation_frame = ttk.Frame(self.translation_settings_frame)
+        ttk.Label(self.openai_translation_frame, text="Model:", style='Small.TLabel').pack(side="left")
+        self.translation_model = tk.StringVar(value=self.parent.get_config_value("translation_model", "gpt-4"))
+        self.translation_model_dropdown = ttk.Combobox(
+            self.openai_translation_frame, 
+            textvariable=self.translation_model,
             values=OPENAI_MODELS,
             state="readonly",
-            width=25,  # Slightly smaller width
+            width=25,
             style='Small.TCombobox'
         )
-        self.openai_model_dropdown.pack(side="left", padx=5)
+        self.translation_model_dropdown.pack(side="left", padx=5)
+        
+        # Google Translation Settings
+        self.google_translation_frame = ttk.Frame(self.translation_settings_frame)
+        ttk.Label(self.google_translation_frame, text="No additional settings required", 
+                  style='Small.TLabel').pack(pady=5)
+        
+        # HuggingFace Translation Settings
+        self.huggingface_translation_frame = ttk.Frame(self.translation_settings_frame)
+        ttk.Label(self.huggingface_translation_frame, text="API URL:", style='Small.TLabel').pack(anchor="w")
+        self.translation_huggingface_url = tk.StringVar(value=self.parent.get_config_value(
+            "translation_huggingface_url", 
+            "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf"
+        ))
+        ttk.Entry(self.huggingface_translation_frame, textvariable=self.translation_huggingface_url, 
+                  width=50).pack(fill="x", pady=2)
+        
+        # LMStudio Translation Settings
+        self.lmstudio_translation_frame = ttk.Frame(self.translation_settings_frame)
+        ttk.Label(self.lmstudio_translation_frame, text="Server URL:", style='Small.TLabel').pack(anchor="w")
+        self.translation_lmstudio_server = tk.StringVar(value=self.parent.get_config_value("translation_lmstudio_server", "http://localhost:1234"))
+        ttk.Entry(self.lmstudio_translation_frame, textvariable=self.translation_lmstudio_server, width=50).pack(fill="x", pady=2)
+        ttk.Label(self.lmstudio_translation_frame, text="Model:", style='Small.TLabel').pack(anchor="w")
+        self.translation_lmstudio_model = tk.StringVar(value=self.parent.get_config_value("translation_lmstudio_model", ""))
+        ttk.Entry(self.lmstudio_translation_frame, textvariable=self.translation_lmstudio_model, width=50).pack(fill="x", pady=2)
         
         # Update visibility based on translation method
-        def update_model_visibility(*args):
-            if self.translation_method.get() == "OpenAI":
-                self.openai_model_frame.pack(fill="x", pady=5)
-            else:
-                self.openai_model_frame.pack_forget()
+        def update_translation_settings_visibility(*args):
+            # Hide all frames
+            for frame in [self.openai_translation_frame, self.google_translation_frame, 
+                         self.huggingface_translation_frame, self.lmstudio_translation_frame]:
+                frame.pack_forget()
+            
+            # Show the appropriate frame based on selected method
+            method = self.translation_method.get()
+            if method == "OpenAI":
+                self.openai_translation_frame.pack(fill="x", pady=5)
+            elif method == "Google":
+                self.google_translation_frame.pack(fill="x", pady=5)
+            elif method == "HuggingFace":
+                self.huggingface_translation_frame.pack(fill="x", pady=5)
+            elif method == "LMStudio":
+                self.lmstudio_translation_frame.pack(fill="x", pady=5)
         
-        self.translation_method.trace_add('write', update_model_visibility)
+        # Bind the update function to translation method changes
+        self.translation_method.trace_add('write', update_translation_settings_visibility)
         # Initial visibility check
-        update_model_visibility()
+        update_translation_settings_visibility()
         
         # Mapping Method Section
         mapping_frame = ttk.LabelFrame(self.main_frame, text="Mapping Settings", padding="5", style='Small.TLabelframe')
@@ -322,9 +342,6 @@ class SettingsWindow:
             style='Small.TCombobox'
         )
         self.mapping_model_dropdown.pack(side="left", padx=5)
-        
-        # Translation Method - Initialize with parent's value
-        self.translation_method = tk.StringVar(value=self.parent.translation_method.get())  # Get from parent
         
         # LMStudio Settings Section
         lmstudio_frame = ttk.LabelFrame(self.main_frame, text="Settings for LMStudio", padding="10")
