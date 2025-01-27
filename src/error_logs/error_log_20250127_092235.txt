@@ -1,0 +1,18 @@
+
+=== Error Report [2025-01-27 09:22:35] ===
+Type: AttributeError
+Message: 'SlideMobGUI' object has no attribute '_on_mousewheel'
+Traceback:
+  File "/Users/jwh/Code/slidemob/src/main.py", line 102, in <module>
+    main()
+    ~~~~^^
+  File "/Users/jwh/Code/slidemob/src/main.py", line 98, in main
+    app = SlideMobGUI(root)
+  File "/Users/jwh/Code/slidemob/src/gui/main_gui.py", line 131, in __init__
+    self.create_widgets()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/jwh/Code/slidemob/src/gui/main_gui.py", line 187, in create_widgets
+    self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+                                         ^^^^^^^^^^^^^^^^^^^
+
+==============================

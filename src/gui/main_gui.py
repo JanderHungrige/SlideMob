@@ -143,8 +143,7 @@ class SlideMobGUI(PowerpointPipeline):
     def create_widgets(self):
         # Create and configure styles
         style = ThemedStyle(self.root)
-        style.set_theme('equilux')  # 'clam' theme works better with custom colors
-        # Configure the button style
+        style.set_theme('equilux')
         style.configure(
             'Blue.TButton',
             background='#0052cc',
@@ -163,8 +162,49 @@ class SlideMobGUI(PowerpointPipeline):
                 ('disabled', '#999999')
             ]
         )
+        # Create a main container frame
+        container = ttk.Frame(self.root)
+        container.pack(fill="both", expand=True)
+        
+        # Create a canvas with scrollbar
+        self.canvas = tk.Canvas(container)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.canvas.yview)
+        
+        # Create main frame that will contain all widgets
+        self.scrollable_frame = ttk.Frame(self.canvas)
+        
+        # Configure scrolling for different platforms
+        def _on_mousewheel(event):
+            if event.num == 5 or event.delta < 0:  # Scroll down
+                self.canvas.yview_scroll(1, "units")
+            elif event.num == 4 or event.delta > 0:  # Scroll up
+                self.canvas.yview_scroll(-1, "units")
+        
+        # Bind for Windows and MacOS
+        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        # Bind for Linux
+        self.canvas.bind_all("<Button-4>", _on_mousewheel)
+        self.canvas.bind_all("<Button-5>", _on_mousewheel)
+        
+        # Configure the canvas
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+        
+        # Create window in canvas for the frame
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack the scrollbar first, then the canvas
+        scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
+        
+        # Update idletasks to ensure proper initial layout
+        self.root.update_idletasks()
+
         # File Selection Frame
-        file_frame = ttk.LabelFrame(self.root, text="File Selection", padding=10)
+        file_frame = ttk.LabelFrame(self.scrollable_frame, text="File Selection", padding=10)
         file_frame.pack(fill="x", padx=10, pady=5)
         
         ttk.Label(file_frame, text="PowerPoint File:").pack(anchor="w")
@@ -172,7 +212,7 @@ class SlideMobGUI(PowerpointPipeline):
         ttk.Button(file_frame, text="Browse", command=self.browse_pptx,style='Blue.TButton').pack(side="left")
         
         # Output Selection Frame
-        output_frame = ttk.LabelFrame(self.root, text="Output Location", padding=10)
+        output_frame = ttk.LabelFrame(self.scrollable_frame, text="Output Location", padding=10)
         output_frame.pack(fill="x", padx=10, pady=5)
         
         ttk.Label(output_frame, text="Output Folder:").pack(anchor="w")
@@ -180,7 +220,7 @@ class SlideMobGUI(PowerpointPipeline):
         ttk.Button(output_frame, text="Browse", command=self.browse_output,style='Blue.TButton').pack(side="left")
         
         # Options Frame with help button
-        options_frame = ttk.LabelFrame(self.root, text="Processing Options", padding=10)
+        options_frame = ttk.LabelFrame(self.scrollable_frame, text="Processing Options", padding=10)
         options_frame.pack(fill="x", padx=10, pady=5)
         
         # Create a frame for the help button
@@ -227,7 +267,7 @@ class SlideMobGUI(PowerpointPipeline):
         self.mapping_method_label.pack(side="left", padx=5)
 
         # Style Instructions
-        style_frame = ttk.LabelFrame(self.root, text="Style Instructions", padding=10)
+        style_frame = ttk.LabelFrame(self.scrollable_frame, text="Style Instructions", padding=10)
         style_frame.pack(fill="x", padx=10, pady=5)
         
         ttk.Label(style_frame, text="Additional Style Instructions:").pack(anchor="w")
@@ -235,7 +275,7 @@ class SlideMobGUI(PowerpointPipeline):
         style_entry.pack(fill="x", pady=5)
         
         # Process and Stop Buttons
-        button_frame = ttk.Frame(self.root)
+        button_frame = ttk.Frame(self.scrollable_frame)
         button_frame.pack(pady=20)
 
         self.process_button = ttk.Button(button_frame, text="Process PowerPoint", 
@@ -250,10 +290,10 @@ class SlideMobGUI(PowerpointPipeline):
         
         # Status
         self.status_var = tk.StringVar(value="Ready")
-        ttk.Label(self.root, textvariable=self.status_var).pack()
+        ttk.Label(self.scrollable_frame, textvariable=self.status_var).pack()
         
         # Create settings button in top right
-        settings_frame = ttk.Frame(self.root)
+        settings_frame = ttk.Frame(self.scrollable_frame)
         settings_frame.pack(anchor="ne", padx=5, pady=5)
         settings_button = ttk.Button(settings_frame, image=self.settings_icon_image, 
                                    command=self.open_settings, style='Blue.TButton')
