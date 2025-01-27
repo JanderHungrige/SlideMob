@@ -55,225 +55,74 @@ def create_custom_styles(style):
 
 class SettingsWindow:
     def __init__(self, root, parent):
+        self.root = root
         self.parent = parent
-        self.window = tk.Toplevel(root)
-        self.window.title("Settings")
-        self.window.geometry("600x400")  # Set a fixed size for the window
+        self.root.title("Settings")
         
-        # Load current settings
-        self.load_env_variables()
+        # Set window size and position
+        window_width = 600
+        window_height = 800
         
-        # Create and configure styles
-        style = ttk.Style(self.window)
-        create_custom_styles(style)
+        # Get screen dimensions
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
         
-        # Create canvas and scrollbar
-        canvas = tk.Canvas(self.window)
-        scrollbar = ttk.Scrollbar(self.window, orient="vertical", command=canvas.yview)
+        # Calculate position for center of screen
+        center_x = int((screen_width - window_width) / 2)
+        center_y = int((screen_height - window_height) / 2)
         
-        # Create main frame that will be scrolled
-        main_frame = ttk.Frame(canvas, padding="10")
+        # Set window size and position
+        self.root.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
         
-        # Configure canvas
-        canvas.configure(yscrollcommand=scrollbar.set)
+        # Optional: Set minimum window size
+        self.root.minsize(500, 600)
         
-        # Pack scrollbar and canvas
+        # Create main container frame
+        container = ttk.Frame(self.root)
+        container.pack(fill="both", expand=True)
+        
+        # Create canvas with scrollbar
+        self.canvas = tk.Canvas(container)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.canvas.yview)
+        
+        # Create main frame that will contain all widgets
+        self.main_frame = ttk.Frame(self.canvas)
+        
+        # Configure scrolling for different platforms
+        def _on_mousewheel(event):
+            if event.num == 5 or event.delta < 0:  # Scroll down
+                self.canvas.yview_scroll(1, "units")
+            elif event.num == 4 or event.delta > 0:  # Scroll up
+                self.canvas.yview_scroll(-1, "units")
+        
+        # Bind for Windows and MacOS
+        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        # Bind for Linux
+        self.canvas.bind_all("<Button-4>", _on_mousewheel)
+        self.canvas.bind_all("<Button-5>", _on_mousewheel)
+        
+        # Configure the canvas
+        self.main_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+        
+        # Create window in canvas for the frame
+        self.canvas.create_window((0, 0), window=self.main_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack the scrollbar first, then the canvas
         scrollbar.pack(side="right", fill="y")
-        canvas.pack(side="left", fill="both", expand=True)
+        self.canvas.pack(side="left", fill="both", expand=True)
         
-        # Create window in canvas for main frame
-        canvas_window = canvas.create_window((0, 0), window=main_frame, anchor="nw", width=canvas.winfo_width())
+        # Load settings before creating widgets
+        self.load_settings()
         
-        # Update canvas scroll region when main frame size changes
-        def configure_scroll_region(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
+        # Create widgets in main_frame
+        self.create_widgets()
         
-        # Update canvas window size when canvas size changes
-        def configure_window_size(event):
-            canvas.itemconfig(canvas_window, width=event.width)
-        
-        # Bind events
-        main_frame.bind("<Configure>", configure_scroll_region)
-        canvas.bind("<Configure>", configure_window_size)
-        
-        # Enable mousewheel scrolling
-        def on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        
-        canvas.bind_all("<MouseWheel>", on_mousewheel)
-        
-        # API Keys Section
-        api_frame = ttk.LabelFrame(main_frame, text="API Keys", padding="10")
-        api_frame.pack(fill="x", pady=5)
-        
-        # OpenAI API Key with show button
-        ttk.Label(api_frame, text="OpenAI API Key:").pack(anchor="w")
-        key_frame = ttk.Frame(api_frame)
-        key_frame.pack(fill="x", pady=2)
-        self.openai_key = tk.StringVar(value="*" * 30 if self.openai_api_key else "")
-        self.openai_entry = ttk.Entry(key_frame, textvariable=self.openai_key, width=50)
-        self.openai_entry.pack(side="left", fill="x", expand=True)
-        self.openai_show_btn = ttk.Button(key_frame, text="Show", width=8, 
-                                        command=lambda: self.toggle_show_key(self.openai_key, self.openai_api_key, self.openai_show_btn))
-        self.openai_show_btn.pack(side="left", padx=(5, 0))
-        self.openai_entry.bind('<FocusIn>', lambda e: self.clear_field(self.openai_key))
-        self.openai_entry.bind('<FocusOut>', lambda e: self.mask_field(self.openai_key, self.openai_api_key))
-        
-        # HuggingFace API Key with show button
-        ttk.Label(api_frame, text="HuggingFace API Key:").pack(anchor="w")
-        key_frame = ttk.Frame(api_frame)
-        key_frame.pack(fill="x", pady=2)
-        self.huggingface_key = tk.StringVar(value="*" * 30 if self.huggingface_api_key else "")
-        self.huggingface_entry = ttk.Entry(key_frame, textvariable=self.huggingface_key, width=50)
-        self.huggingface_entry.pack(side="left", fill="x", expand=True)
-        self.huggingface_show_btn = ttk.Button(key_frame, text="Show", width=8,
-                                             command=lambda: self.toggle_show_key(self.huggingface_key, self.huggingface_api_key, self.huggingface_show_btn))
-        self.huggingface_show_btn.pack(side="left", padx=(5, 0))
-        self.huggingface_entry.bind('<FocusIn>', lambda e: self.clear_field(self.huggingface_key))
-        self.huggingface_entry.bind('<FocusOut>', lambda e: self.mask_field(self.huggingface_key, self.huggingface_api_key))
-        
-        # Translation Method Section
-        translation_frame = ttk.LabelFrame(main_frame, text="Translation Settings", 
-                                         padding="5", style='Small.TLabelframe')
-        translation_frame.pack(fill="x", pady=5)
-        
-        # Translation Method
-        ttk.Label(translation_frame, text="Translation Method:").pack(anchor="w")
-        self.translation_method = tk.StringVar(value=parent.translation_method.get())
-        for method in ["OpenAI", "Google", "HuggingFace", "LMStudio"]:
-            method_frame = ttk.Frame(translation_frame)
-            method_frame.pack(anchor="w", fill="x", pady=1)  # Reduced padding
-            
-            ttk.Radiobutton(method_frame, text=method, variable=self.translation_method, 
-                           value=method, style='Small.TRadiobutton').pack(side="left")
-        
-        # OpenAI Model Selection Frame
-        self.openai_model_frame = ttk.Frame(translation_frame)
-        self.openai_model_frame.pack(fill="x", pady=5)
-        ttk.Label(self.openai_model_frame, text="Model:", style='Small.TLabel').pack(side="left")
-        self.openai_model = tk.StringVar(value=parent.get_config_value("openai_model", "gpt-4"))
-        self.openai_model_dropdown = ttk.Combobox(
-            self.openai_model_frame, 
-            textvariable=self.openai_model,
-            values=OPENAI_MODELS,
-            state="readonly",
-            width=25,  # Slightly smaller width
-            style='Small.TCombobox'
-        )
-        self.openai_model_dropdown.pack(side="left", padx=5)
-        
-        # Update visibility based on translation method
-        def update_model_visibility(*args):
-            if self.translation_method.get() == "OpenAI":
-                self.openai_model_frame.pack(fill="x", pady=5)
-            else:
-                self.openai_model_frame.pack_forget()
-        
-        self.translation_method.trace_add('write', update_model_visibility)
-        # Initial visibility check
-        update_model_visibility()
-        
-        # Mapping Method Section
-        mapping_frame = ttk.LabelFrame(main_frame, text="Mapping Settings", padding="5", style='Small.TLabelframe')
-        mapping_frame.pack(fill="x", pady=5)
-        
-        # Mapping Method - Initialize with parent's value
-        ttk.Label(mapping_frame, text="Mapping Method:").pack(anchor="w")
-        self.mapping_method = tk.StringVar(value=parent.mapping_method.get())  # Get from parent
-        for method in ["OpenAI", "HuggingFace", "LMStudio"]:
-            method_frame = ttk.Frame(mapping_frame)
-            method_frame.pack(anchor="w", fill="x", pady=1)
-            
-            ttk.Radiobutton(method_frame, text=method, variable=self.mapping_method, 
-                           value=method, style='Small.TRadiobutton').pack(side="left")
-        
-        # Mapping Model Selection Frame
-        self.mapping_model_frame = ttk.Frame(mapping_frame)
-        self.mapping_model_frame.pack(fill="x", pady=5)
-        ttk.Label(self.mapping_model_frame, text="Model:", style='Small.TLabel').pack(side="left")
-        self.mapping_model = tk.StringVar(value=parent.get_config_value("mapping_model", "gpt-4"))
-        self.mapping_model_dropdown = ttk.Combobox(
-            self.mapping_model_frame, 
-            textvariable=self.mapping_model,
-            values=OPENAI_MODELS,
-            state="readonly",
-            width=25,
-            style='Small.TCombobox'
-        )
-        self.mapping_model_dropdown.pack(side="left", padx=5)
-        
-        # Translation Method - Initialize with parent's value
-        self.translation_method = tk.StringVar(value=parent.translation_method.get())  # Get from parent
-        
-        # LMStudio Settings Section
-        lmstudio_frame = ttk.LabelFrame(main_frame, text="Settings for LMStudio", padding="10")
-        lmstudio_frame.pack(fill="x", pady=5)
-        
-        # Local Server Address
-        ttk.Label(lmstudio_frame, text="Local Server Address:").pack(anchor="w")
-        self.lmstudio_server = tk.StringVar(value=parent.get_config_value("lmstudio_server", "http://localhost:1234"))
-        server_entry = ttk.Entry(lmstudio_frame, textvariable=self.lmstudio_server, width=50)
-        server_entry.pack(fill="x", pady=2)
-        
-        # Model API Identifier
-        ttk.Label(lmstudio_frame, text="Model API Identifier:").pack(anchor="w")
-        self.lmstudio_model = tk.StringVar(value=parent.get_config_value("lmstudio_model_api", ""))  # Changed key name
-        model_entry = ttk.Entry(lmstudio_frame, textvariable=self.lmstudio_model, width=50)
-        model_entry.pack(fill="x", pady=2)
-        
-        # Update visibility based on mapping method
-        def update_visibility(*args):
-            if self.mapping_method.get() == "OpenAI":
-                self.mapping_model_frame.pack(fill="x", pady=5)
-                lmstudio_frame.pack_forget()
-            elif self.mapping_method.get() == "LMStudio":
-                self.mapping_model_frame.pack_forget()
-                lmstudio_frame.pack(fill="x", pady=5)
-            else:
-                self.mapping_model_frame.pack_forget()
-                lmstudio_frame.pack_forget()
-        
-        self.mapping_method.trace_add('write', update_visibility)
-        # Initial visibility check
-        update_visibility()
-        
-        # HuggingFace Settings Section
-        self.huggingface_frame = ttk.LabelFrame(main_frame, text="Settings for HuggingFace", 
-                                               padding="5", style='Small.TLabelframe')
-        self.huggingface_frame.pack(fill="x", pady=5)
-        
-        # HuggingFace API URL
-        ttk.Label(self.huggingface_frame, text="API URL:", 
-                  style='Small.TLabel').pack(anchor="w")
-        self.huggingface_url = tk.StringVar(value=self.parent.get_config_value(
-            "huggingface_url", 
-            "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf"
-        ))
-        ttk.Entry(self.huggingface_frame, textvariable=self.huggingface_url, 
-                  width=50).pack(fill="x", pady=2)
-        
-        # Update visibility based on translation method
-        def update_huggingface_visibility(*args):
-            if self.translation_method.get() == "HuggingFace" or self.mapping_method.get() == "HuggingFace":
-                self.huggingface_frame.pack(fill="x", pady=5)
-            else:
-                self.huggingface_frame.pack_forget()
-        
-        self.translation_method.trace_add('write', update_huggingface_visibility)
-        self.mapping_method.trace_add('write', update_huggingface_visibility)
-        # Initial visibility check
-        update_huggingface_visibility()
-        
-        # Save Button - now placed after HuggingFace frame
-        ttk.Button(main_frame, text="Save Settings", 
-                  command=self.save_settings, 
-                  style='Blue.TButton').pack(pady=(5, 10))
-
-        def on_closing():
-            canvas.unbind_all("<MouseWheel>")  # Remove mousewheel binding
-            self.window.destroy()
-        
-        self.window.protocol("WM_DELETE_WINDOW", on_closing)
+        # Update idletasks to ensure proper initial layout
+        self.root.update_idletasks()
 
     def load_env_variables(self):
         load_dotenv()
@@ -340,7 +189,7 @@ class SettingsWindow:
         self.parent.save_gui_config()
         
         messagebox.showinfo("Success", "Settings saved successfully!")
-        self.window.destroy()
+        self.root.destroy()
         if not self.openai_key.get().startswith('*'):
             set_key(env_path, "OPENAI_API_KEY", self.openai_key.get())
         if not self.huggingface_key.get().startswith('*'):
@@ -354,4 +203,195 @@ class SettingsWindow:
         self.parent.save_gui_config()
         
         #messagebox.showinfo("Success", "Settings saved successfully!")
-        self.window.destroy()
+        self.root.destroy()
+
+    def load_settings(self):
+        """Load settings from environment variables and config"""
+        # Load API keys from environment
+        self.load_env_variables()
+        
+        # Load other settings from parent's config
+        self.translation_method = tk.StringVar(value=self.parent.translation_method.get())
+        self.mapping_method = tk.StringVar(value=self.parent.mapping_method.get())
+        self.openai_model = tk.StringVar(value=self.parent.get_config_value("openai_model", "gpt-4"))
+        self.mapping_model = tk.StringVar(value=self.parent.get_config_value("mapping_model", "gpt-4"))
+        self.lmstudio_server = tk.StringVar(value=self.parent.get_config_value("lmstudio_server", "http://localhost:1234"))
+        self.lmstudio_model = tk.StringVar(value=self.parent.get_config_value("lmstudio_model", ""))
+        self.huggingface_url = tk.StringVar(value=self.parent.get_config_value(
+            "huggingface_url", 
+            "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf"
+        ))
+
+    def create_widgets(self):
+        # API Keys Section
+        api_frame = ttk.LabelFrame(self.main_frame, text="API Keys", padding="10")
+        api_frame.pack(fill="x", pady=5)
+        
+        # OpenAI API Key with show button
+        ttk.Label(api_frame, text="OpenAI API Key:").pack(anchor="w")
+        key_frame = ttk.Frame(api_frame)
+        key_frame.pack(fill="x", pady=2)
+        self.openai_key = tk.StringVar(value="*" * 30 if self.openai_api_key else "")
+        self.openai_entry = ttk.Entry(key_frame, textvariable=self.openai_key, width=50)
+        self.openai_entry.pack(side="left", fill="x", expand=True)
+        self.openai_show_btn = ttk.Button(key_frame, text="Show", width=8, 
+                                        command=lambda: self.toggle_show_key(self.openai_key, self.openai_api_key, self.openai_show_btn))
+        self.openai_show_btn.pack(side="left", padx=(5, 0))
+        self.openai_entry.bind('<FocusIn>', lambda e: self.clear_field(self.openai_key))
+        self.openai_entry.bind('<FocusOut>', lambda e: self.mask_field(self.openai_key, self.openai_api_key))
+        
+        # HuggingFace API Key with show button
+        ttk.Label(api_frame, text="HuggingFace API Key:").pack(anchor="w")
+        key_frame = ttk.Frame(api_frame)
+        key_frame.pack(fill="x", pady=2)
+        self.huggingface_key = tk.StringVar(value="*" * 30 if self.huggingface_api_key else "")
+        self.huggingface_entry = ttk.Entry(key_frame, textvariable=self.huggingface_key, width=50)
+        self.huggingface_entry.pack(side="left", fill="x", expand=True)
+        self.huggingface_show_btn = ttk.Button(key_frame, text="Show", width=8,
+                                             command=lambda: self.toggle_show_key(self.huggingface_key, self.huggingface_api_key, self.huggingface_show_btn))
+        self.huggingface_show_btn.pack(side="left", padx=(5, 0))
+        self.huggingface_entry.bind('<FocusIn>', lambda e: self.clear_field(self.huggingface_key))
+        self.huggingface_entry.bind('<FocusOut>', lambda e: self.mask_field(self.huggingface_key, self.huggingface_api_key))
+        
+        # Translation Method Section
+        translation_frame = ttk.LabelFrame(self.main_frame, text="Translation Settings", 
+                                         padding="5", style='Small.TLabelframe')
+        translation_frame.pack(fill="x", pady=5)
+        
+        # Translation Method
+        ttk.Label(translation_frame, text="Translation Method:").pack(anchor="w")
+        self.translation_method = tk.StringVar(value=self.parent.translation_method.get())
+        for method in ["OpenAI", "Google", "HuggingFace", "LMStudio"]:
+            method_frame = ttk.Frame(translation_frame)
+            method_frame.pack(anchor="w", fill="x", pady=1)  # Reduced padding
+            
+            ttk.Radiobutton(method_frame, text=method, variable=self.translation_method, 
+                           value=method, style='Small.TRadiobutton').pack(side="left")
+        
+        # OpenAI Model Selection Frame
+        self.openai_model_frame = ttk.Frame(translation_frame)
+        self.openai_model_frame.pack(fill="x", pady=5)
+        ttk.Label(self.openai_model_frame, text="Model:", style='Small.TLabel').pack(side="left")
+        self.openai_model = tk.StringVar(value=self.parent.get_config_value("openai_model", "gpt-4"))
+        self.openai_model_dropdown = ttk.Combobox(
+            self.openai_model_frame, 
+            textvariable=self.openai_model,
+            values=OPENAI_MODELS,
+            state="readonly",
+            width=25,  # Slightly smaller width
+            style='Small.TCombobox'
+        )
+        self.openai_model_dropdown.pack(side="left", padx=5)
+        
+        # Update visibility based on translation method
+        def update_model_visibility(*args):
+            if self.translation_method.get() == "OpenAI":
+                self.openai_model_frame.pack(fill="x", pady=5)
+            else:
+                self.openai_model_frame.pack_forget()
+        
+        self.translation_method.trace_add('write', update_model_visibility)
+        # Initial visibility check
+        update_model_visibility()
+        
+        # Mapping Method Section
+        mapping_frame = ttk.LabelFrame(self.main_frame, text="Mapping Settings", padding="5", style='Small.TLabelframe')
+        mapping_frame.pack(fill="x", pady=5)
+        
+        # Mapping Method - Initialize with parent's value
+        ttk.Label(mapping_frame, text="Mapping Method:").pack(anchor="w")
+        self.mapping_method = tk.StringVar(value=self.parent.mapping_method.get())  # Get from parent
+        for method in ["OpenAI", "HuggingFace", "LMStudio"]:
+            method_frame = ttk.Frame(mapping_frame)
+            method_frame.pack(anchor="w", fill="x", pady=1)
+            
+            ttk.Radiobutton(method_frame, text=method, variable=self.mapping_method, 
+                           value=method, style='Small.TRadiobutton').pack(side="left")
+        
+        # Mapping Model Selection Frame
+        self.mapping_model_frame = ttk.Frame(mapping_frame)
+        self.mapping_model_frame.pack(fill="x", pady=5)
+        ttk.Label(self.mapping_model_frame, text="Model:", style='Small.TLabel').pack(side="left")
+        self.mapping_model = tk.StringVar(value=self.parent.get_config_value("mapping_model", "gpt-4"))
+        self.mapping_model_dropdown = ttk.Combobox(
+            self.mapping_model_frame, 
+            textvariable=self.mapping_model,
+            values=OPENAI_MODELS,
+            state="readonly",
+            width=25,
+            style='Small.TCombobox'
+        )
+        self.mapping_model_dropdown.pack(side="left", padx=5)
+        
+        # Translation Method - Initialize with parent's value
+        self.translation_method = tk.StringVar(value=self.parent.translation_method.get())  # Get from parent
+        
+        # LMStudio Settings Section
+        lmstudio_frame = ttk.LabelFrame(self.main_frame, text="Settings for LMStudio", padding="10")
+        lmstudio_frame.pack(fill="x", pady=5)
+        
+        # Local Server Address
+        ttk.Label(lmstudio_frame, text="Local Server Address:").pack(anchor="w")
+        self.lmstudio_server = tk.StringVar(value=self.parent.get_config_value("lmstudio_server", "http://localhost:1234"))
+        server_entry = ttk.Entry(lmstudio_frame, textvariable=self.lmstudio_server, width=50)
+        server_entry.pack(fill="x", pady=2)
+        
+        # Model API Identifier
+        ttk.Label(lmstudio_frame, text="Model API Identifier:").pack(anchor="w")
+        self.lmstudio_model = tk.StringVar(value=self.parent.get_config_value("lmstudio_model", ""))  # Changed key name
+        model_entry = ttk.Entry(lmstudio_frame, textvariable=self.lmstudio_model, width=50)
+        model_entry.pack(fill="x", pady=2)
+        
+        # Update visibility based on mapping method
+        def update_visibility(*args):
+            if self.mapping_method.get() == "OpenAI":
+                self.mapping_model_frame.pack(fill="x", pady=5)
+                lmstudio_frame.pack_forget()
+            elif self.mapping_method.get() == "LMStudio":
+                self.mapping_model_frame.pack_forget()
+                lmstudio_frame.pack(fill="x", pady=5)
+            else:
+                self.mapping_model_frame.pack_forget()
+                lmstudio_frame.pack_forget()
+        
+        self.mapping_method.trace_add('write', update_visibility)
+        # Initial visibility check
+        update_visibility()
+        
+        # HuggingFace Settings Section
+        self.huggingface_frame = ttk.LabelFrame(self.main_frame, text="Settings for HuggingFace", 
+                                               padding="5", style='Small.TLabelframe')
+        self.huggingface_frame.pack(fill="x", pady=5)
+        
+        # HuggingFace API URL
+        ttk.Label(self.huggingface_frame, text="API URL:", 
+                  style='Small.TLabel').pack(anchor="w")
+        self.huggingface_url = tk.StringVar(value=self.parent.get_config_value(
+            "huggingface_url", 
+            "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf"
+        ))
+        ttk.Entry(self.huggingface_frame, textvariable=self.huggingface_url, 
+                  width=50).pack(fill="x", pady=2)
+        
+        # Update visibility based on translation method
+        def update_huggingface_visibility(*args):
+            if self.translation_method.get() == "HuggingFace" or self.mapping_method.get() == "HuggingFace":
+                self.huggingface_frame.pack(fill="x", pady=5)
+            else:
+                self.huggingface_frame.pack_forget()
+        
+        self.translation_method.trace_add('write', update_huggingface_visibility)
+        self.mapping_method.trace_add('write', update_huggingface_visibility)
+        # Initial visibility check
+        update_huggingface_visibility()
+        
+        # Save Button - now placed after HuggingFace frame
+        ttk.Button(self.main_frame, text="Save Settings", 
+                  command=self.save_settings, 
+                  style='Blue.TButton').pack(pady=(5, 10))
+
+        def on_closing():
+            self.canvas.unbind_all("<MouseWheel>")  # Remove mousewheel binding
+            self.root.destroy()
+        
+        self.root.protocol("WM_DELETE_WINDOW", on_closing)

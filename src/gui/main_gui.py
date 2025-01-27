@@ -493,7 +493,9 @@ class SlideMobGUI(PowerpointPipeline):
 
     def open_settings(self):
         """Open the settings window"""
-        settings = SettingsWindow(self.root, self)
+        settings_window = tk.Toplevel(self.root)
+        settings_window.grab_set()  # Make the window modal
+        SettingsWindow(settings_window, self)
 
     def stop_processing(self):
         if self.processing:
