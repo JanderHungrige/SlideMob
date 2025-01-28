@@ -40,10 +40,8 @@ class SlideMobGUI(PowerpointPipeline):
         self.mapping_method = tk.StringVar(self.root, value="OpenAI")
         self.translation_model = tk.StringVar(self.root, value="gpt-4")
         self.mapping_model = tk.StringVar(self.root, value="gpt-4")
-        
-        self.lmstudio_server = "http://localhost:1234"
-        self.lmstudio_model_api = ""
-        
+        self.translation_api_url = tk.StringVar(self.root, value="http://localhost:1234")
+        self.mapping_api_url = tk.StringVar(self.root, value="http://localhost:1234")
         # Update the parent class variables whenever GUI vars change
         self.gui_pptx_path.trace_add('write', self._update_pptx_path)
         self.gui_output_path.trace_add('write', self._update_output_path)
@@ -381,17 +379,11 @@ class SlideMobGUI(PowerpointPipeline):
                 self.root.update()
                 
                 translator = PowerPointTranslator(
-                    target_language=self.gui_target_language.get(),
-                    Further_StyleInstructions=self.gui_style_instructions.get(),
-                    update_language=self.update_language.get(),
-                    fresh_extract=not (self.extract_var.get() or self.polish_var.get()),
-                    translation_method=self.translation_method.get(),
-                    mapping_method=self.mapping_method.get()
-                )
-                success = translator.translate_presentation(
                     progress_callback=self.update_translation_progress,
                     stop_check_callback=lambda: self.stop_requested
                 )
+                success = translator.translate_presentation()
+
                 if not success:
                     if self.stop_requested:
                         raise Exception("Processing stopped by user")
@@ -436,12 +428,10 @@ class SlideMobGUI(PowerpointPipeline):
                 with open(config_path, 'r') as f:
                     config = json.load(f)
                     
-                # Add loading of OpenAI model
                 self.translation_model = config.get('translation_model', 'gpt-4')
-                
-                # Add loading of LMStudio settings
-                self.lmstudio_server = config.get('lmstudio_server', 'http://localhost:1234')
-                self.lmstudio_model_api = config.get('lmstudio_model_api', '')
+                self.mapping_model = config.get('mapping_model', 'gpt-4')
+                self.translation_api_url = config.get('translation_api_url', 'http://localhost:1234')
+                self.mapping_api_url = config.get('mapping_api_url', 'http://localhost:1234')
                 
                 # Set GUI variables from config
                 self.extract_var.set(config.get('extract_pptx', True))
@@ -481,9 +471,9 @@ class SlideMobGUI(PowerpointPipeline):
                 'pptx_path': self.gui_pptx_path.get(),
                 'output_folder': self.gui_output_path.get(),
                 'translation_model': self.translation_model.get(),
-                'mapping_model': self.mapping_model.get(),
-                'lmstudio_server': self.lmstudio_server,
-                'lmstudio_model_api': self.lmstudio_model_api
+                'mapping_model': self.mapping_model.get(),  
+                'translation_api_url': self.translation_api_url.get(),
+                'mapping_api_url': self.mapping_api_url.get()
             }
             
             config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_gui.json")
@@ -523,11 +513,7 @@ class SlideMobGUI(PowerpointPipeline):
             
             # Update config with new values
             config.update(new_values)
-            
-            # Update class variables from settings window
-            self.lmstudio_server = new_values.get('lmstudio_server', self.lmstudio_server)
-            self.lmstudio_model_api = new_values.get('lmstudio_model', self.lmstudio_model_api)
-            
+
             # Save updated config
             with open(config_path, 'w') as f:
                 json.dump(config, f, indent=4)

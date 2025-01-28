@@ -18,68 +18,47 @@ from utils.promts import (translation_prompt_openai_0, translation_prompt_openai
 class TranslationResponse(BaseModel):
     translation: str
 
-class SlideTranslator(PowerpointPipeline):
-    def __init__(self, 
-                 target_language: str = "German",
-                 Further_StyleInstructions: str = "None",
-                 update_language: bool = False,
-                 reduce_slides: bool = False,
-                 verbose: bool = False,
-                 translation_method: str = "OpenAI",
-                 mapping_method: str = "OpenAI",
-                 pipeline_settings: Optional[PowerpointPipeline] = None): 
+class SlideTranslator():
+    def __init__(self, pipeline_settings: Optional[PowerpointPipeline] = None,
+                 verbose: bool = False):
 
-        # Initialize parent class (PowerpointPipeline)
-        super().__init__(translation_client=translation_method, mapping_client=mapping_method,
-                         model_settings=pipeline_settings)
+        # Initialize parent class first with settings from pipeline_settings
+        self.root_folder=pipeline_settings.root_folder
+        self.translation_method=pipeline_settings.translation_method
+        self.mapping_method=pipeline_settings.mapping_method
+        self.translation_client=pipeline_settings.translation_client
+        self.mapping_client=pipeline_settings.mapping_client
+        self.translation_model=pipeline_settings.translation_model
+        self.mapping_model=pipeline_settings.mapping_model
+        self.style_instructions = pipeline_settings.style_instructions
+        self.update_language = pipeline_settings.update_language
+        self.reduce_slides = pipeline_settings.reduce_slides
+        self.verbose = pipeline_settings.verbose
+        self.target_language = pipeline_settings.target_language
+        self.verbose=pipeline_settings.verbose
+        self.namespaces=pipeline_settings.namespaces
+        self.translation_headers=pipeline_settings.translation_headers
+        self.mapping_headers=pipeline_settings.mapping_headers
+        self.translation_api_url=pipeline_settings.translation_api_url
+        self.mapping_api_url=pipeline_settings.mapping_api_url
         
-        if pipeline_settings:
-            # Copy settings from the provided PowerpointPipeline instance
-            self.trans_client = pipeline_settings.trans_client
-            self.map_client = pipeline_settings.map_client
-            self.translation_model = pipeline_settings.translation_model
-            self.translation_client = pipeline_settings.translation_client
-            self.mapping_client = pipeline_settings.mapping_client
-            self.mapping_model = pipeline_settings.mapping_model
-
-            
-            # Copy additional settings
-            for attr in ['HUGGINGFACE_API_URL', 'huggingface_headers', 
-                        'LMSTUDIO_API_URL', 'lmstudio_model', 'lmstudio_headers',
-                        'mapping_model']:
-                if hasattr(pipeline_settings, attr):
-                    setattr(self, attr, getattr(pipeline_settings, attr))
-
-        self.target_language = target_language
-        self.Further_StyleInstructions = Further_StyleInstructions
-        self.update_language = update_language
-        self.reduce_slides = reduce_slides
-        self.verbose = verbose
-        self.translation_method = translation_method
-        self.mapping_method = mapping_method
-
+        self.find_slide_files=pipeline_settings.find_slide_files
+        self.extract_paragraphs=pipeline_settings.extract_paragraphs
+        self.extract_text_runs=pipeline_settings.extract_text_runs
+   
         # Load language codes mapping
         config_languages_path = os.path.join(self.root_folder, "src", "config_languages.json")
         with open(config_languages_path, "r") as f:
             self.language_codes = json.load(f)
 
-        # Model settings are already initialized in the parent class (PowerpointPipeline)
-        # We can access them directly since they were set up by ModelSettings
-        if translation_method == "OpenAI":
-            self.model = self.model  # From parent class via ModelSettings
-        elif translation_method == "LMStudio":
-            self.LMSTUDIO_API_URL = self.LMSTUDIO_API_URL  # From parent class
-            self.lmstudio_model = self.lmstudio_model
-            self.lmstudio_headers = self.lmstudio_headers
-            # Check model type
-            if re.search(r'\bllama\b', self.lmstudio_model.lower()):
+        # Check model type for LMStudio
+        if hasattr(self, 'translation_model') and self.translation_model:
+            if re.search(r'\bllama\b', self.translation_model.lower()):
                 self.model_type = "llama"
-            elif re.search(r'\bdeepseek\b', self.lmstudio_model.lower()):
+            elif re.search(r'\bdeepseek\b', self.translation_model.lower()):
                 self.model_type = "deepseek"
             else:
                 self.model_type = "unknown"
-        elif translation_method == "HuggingFace":
-            self.HUGGINGFACE_API_URL = self.HUGGINGFACE_API_URL  # From parent class
 
     def create_translation_map(self, text_elements: List[ET.Element], original_text_elements: set) -> dict:
         """Create a mapping between original text and their translations."""
@@ -103,6 +82,8 @@ class SlideTranslator(PowerpointPipeline):
                         translated_text = self.translate_text_OpenAI(self.original_text)
                     elif self.translation_method == "Google":
                         translated_text = self.translate_text_google(self.original_text)
+                    elif self.translation_method == "DeepSeek":
+                        translated_text = self.translate_text_deepseek(self.original_text)
                     elif self.translation_method == "HuggingFace":
                         translated_text = self.translate_text_huggingface(self.original_text)
                     elif self.translation_method == "LMStudio":
@@ -146,17 +127,17 @@ class SlideTranslator(PowerpointPipeline):
         
         """Translate text while preserving approximate length and formatting."""
         chosen_prompt=1
-        prompt_0 = translation_prompt_openai_0(text, self.target_language, self.Further_StyleInstructions)
-        prompt_1 = translation_prompt_openai_1(text, self.target_language, self.Further_StyleInstructions)
+        prompt_0 = translation_prompt_openai_0(text, self.target_language, self.style_instructions)
+        prompt_1 = translation_prompt_openai_1(text, self.target_language, self.style_instructions)
                 
         try:
-            response = self.trans_client.chat.completions.create(
-                model=self.model,
+            response = self.translation_client.chat.completions.create(
+                model=self.translation_model,
                     messages=[
                         {"role": "system", "content": "You are a professional translator."},
                         {"role": "user", "content": prompt_1}
                     ],
-                    temperature=0.1
+                    temperature=1.5
                 )
                 
         except Exception as e:
@@ -206,12 +187,50 @@ class SlideTranslator(PowerpointPipeline):
         asyncio.run(translate_text())
         return self.result.text
     
+    def translate_text_deepseek(self, text: str) -> str:
+        # result = self.analyze_text(text)
+        # if result == "not_translatable":
+        #     return text  # Return original text without translation
+        
+        """Translate text while preserving approximate length and formatting."""
+        prompt_0 = translation_prompt_deepseek_0(text, self.target_language, self.style_instructions)
+                
+        try:
+            response = self.translation_client.chat.completions.create(
+                model=self.translation_model,
+                    messages=[
+                        {"role": "system", "content": "You are a professional translator."},
+                        {"role": "user", "content": prompt_0}
+                    ],
+                    temperature=1.5
+                )
+                
+        except Exception as e:
+            print(f"Translation error. Something wrong with the LLM: {e}")
+            return text
+
+        try:
+            content = response.choices[0].message.content.strip()
+            # Extract text between <translation> tags
+            translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
+            if translation_match:
+                if self.verbose:
+                    print(f"\tTranslation match: {translation_match.group(1).strip()}")
+                return translation_match.group(1).strip()
+
+        except Exception as e:
+            print(f"Response.strip() error: {e} for text: {text} with result {response.choices[0].message.content}")
+            print("Full traceback:")
+            print(traceback.format_exc())        
+    
     def translate_text_huggingface(self, text: str) -> str:
-        prompt_0 = translation_prompt_llama2_0(text, self.target_language, self.Further_StyleInstructions)
-        prompt_1 = translation_prompt_llama2_1(text, self.target_language, self.Further_StyleInstructions)
+        prompt_0 = translation_prompt_llama2_0(text, self.target_language, self.style_instructions)
+        prompt_1 = translation_prompt_llama2_1(text, self.target_language, self.style_instructions)
 
         payload = {"inputs": prompt_0}
-        response = requests.post(self.HUGGINGFACE_API_URL, headers=self.huggingface_headers, json=payload)
+        response = requests.post(self.translation_api_url,
+                                 headers=self.translation_headers, 
+                                 json=payload)
                         
         # Extract and validate JSON from the response
         try:
@@ -233,24 +252,24 @@ class SlideTranslator(PowerpointPipeline):
     def translate_text_lmstudio(self, text: str) -> str:
         """Translate text using local LMStudio server."""
 
-        if self.model_type == "llama":
-            prompt_0 = translation_prompt_llama2_0(text, self.target_language, self.Further_StyleInstructions)
-        elif self.model_type == "deepseek":
-            prompt_0 = translation_prompt_deepseek_0(text, self.target_language, self.Further_StyleInstructions)
+        if self.translation_model == "llama":
+            prompt_0 = translation_prompt_llama2_0(text, self.target_language, self.style_instructions)
+        elif self.translation_model == "deepseek":
+            prompt_0 = translation_prompt_deepseek_0(text, self.target_language, self.style_instructions)
         
         payload = {
             "messages": [
                 {"role": "system", "content": "You are a professional translator."},
                 {"role": "user", "content": prompt_0}
             ],
-            "model": self.lmstudio_model,
-            "temperature": 0.1
+            "model": self.translation_model,
+            "temperature": 1.5
         }
         
         try:
             response = requests.post(
-                self.LMSTUDIO_API_URL,
-                headers=self.lmstudio_headers,
+                self.translation_api_url,
+                headers=self.translation_headers,
                 json=payload
             )
             response.raise_for_status()
@@ -279,7 +298,21 @@ class SlideTranslator(PowerpointPipeline):
             if self.mapping_method == "OpenAI":
                 prompt = mapping_prompt_openai(original_text_elements, self.original_text, translated_text)
                 
-                response = self.map_client.chat.completions.create(
+                response = self.mapping_client.chat.completions.create(
+                    model=self.mapping_model,
+                    messages=[
+                        {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    response_format={"type": "json_object"}
+                )
+                segment_mappings = json.loads(response.choices[0].message.content)
+
+            elif self.mapping_method == "DeepSeek":
+                prompt = mapping_prompt_deepseek(original_text_elements, self.original_text, translated_text)
+                
+                response = self.mapping_client.chat.completions.create(
                     model=self.mapping_model,
                     messages=[
                         {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
@@ -317,9 +350,9 @@ class SlideTranslator(PowerpointPipeline):
                 
             elif self.mapping_method == "LMStudio":
                 # Use existing LMStudio implementation
-                if self.model_type == "llama":
+                if self.mapping_model == "llama":
                     formatted_prompt = mapping_prompt_llama2(original_text_elements, self.original_text, translated_text)
-                elif self.model_type == "deepseek":
+                elif self.mapping_model == "deepseek":
                     formatted_prompt = mapping_prompt_deepseek(original_text_elements, self.original_text, translated_text)
 
                 payload = {
@@ -327,13 +360,13 @@ class SlideTranslator(PowerpointPipeline):
                         {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
                         {"role": "user", "content": formatted_prompt}
                     ],
-                    "model": self.lmstudio_model,
-                    "temperature": 0.1
+                    "model": self.mapping_model,
+                    "temperature": 0.3
                 }
                 
                 try:
                     response = requests.post(
-                        self.LMSTUDIO_API_URL,
+                        self.lmstudio_server,
                         headers=self.lmstudio_headers,
                         json=payload
                     )
@@ -390,9 +423,9 @@ class SlideTranslator(PowerpointPipeline):
             print(traceback.format_exc())
             return "en-US"  # default to en-US on error
 
-    def process_slides(self, folder_path: str, progress_callback=None, stop_check_callback=None):
+    def process_slides(self, progress_callback=None, stop_check_callback=None):
         """Main function to process all slides in the presentation."""
-        slide_files = self.find_slide_files(folder_path)
+        slide_files = self.find_slide_files()
         selected_slides = ["slide2.xml", "slide3.xml", "slide4.xml"]
         total_slides = len(slide_files)
 

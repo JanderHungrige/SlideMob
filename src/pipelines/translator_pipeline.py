@@ -3,50 +3,31 @@ from core_functions.translator import SlideTranslator
 from utils.path_manager import PathManager
 import os
 import traceback
+from typing import Optional
 
-class PowerPointTranslator(PowerpointPipeline):
-    def __init__(self, target_language:str, Further_StyleInstructions:str="None", 
-                 update_language:bool=False, fresh_extract:bool=True, verbose:bool=False, 
-                 reduce_slides:bool=False, translation_method:str="OpenAI", 
-                 mapping_method:str="OpenAI"):
+from core_functions.base_class import PowerpointPipeline
+
+class PowerPointTranslator():
+    def __init__(self, progress_callback, stop_check_callback):
         # Initialize base class first to set up ModelSettings
-        super().__init__(translation_client=translation_method, 
-                         mapping_client=mapping_method
-                         )
+        self.progress_callback=progress_callback
+        self.stop_check_callback=stop_check_callback
         
-        self.fresh_extract = fresh_extract
-        self.verbose = verbose
-        self.reduce_slides = reduce_slides
-        self.translation_method = translation_method
-        self.mapping_method = mapping_method
-        
-        # Pass the model settings attributes to SlideTranslator
-        self.translator = SlideTranslator(
-            target_language=target_language, 
-            Further_StyleInstructions=Further_StyleInstructions, 
-            update_language=update_language, 
-            reduce_slides=reduce_slides, 
-            verbose=verbose, 
-            translation_method=translation_method, 
-            mapping_method=mapping_method,
-            model_settings=self
-        )
-
     def translate_presentation(self, progress_callback=None, stop_check_callback=None):
         """Main method to handle the full translation process"""
         try:
-            # Extract PPTX
-            if self.fresh_extract:  
-                self.extract_pptx()
-            #Get namespaces
-            namespaces = self.get_namespace()
-            self.translator.namespaces = namespaces
-            # Process slides with callbacks
-            success = self.translator.process_slides(self.extract_path, progress_callback, stop_check_callback)
+            self.settings=PowerpointPipeline()
+            self.translator=SlideTranslator(pipeline_settings=self.settings)
+            # Extract PPTX if needed
+            if self.settings.fresh_extract:  
+                self.settings.extract_pptx()
+            # Get namespaces
+            namespaces = self.settings.get_namespace() 
+            success = self.translator.process_slides(self.progress_callback, self.stop_check_callback)
             if not success:
                 return False
             # Compose final PPTX
-            self.compose_pptx(self.extract_path, self.output_pptx)
+            self.settings.compose_pptx(self.settings.extract_path, self.settings.output_pptx)
             return True
             
         except Exception as e:

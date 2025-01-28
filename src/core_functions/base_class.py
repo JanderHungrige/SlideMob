@@ -13,12 +13,6 @@ from utils.model_settings import ModelSettings
 
 class PowerpointPipeline:
     def __init__(self, 
-                 translation_client:str = "OpenAI", 
-                 mapping_client:str = "OpenAI",
-                 translation_model: str = "gpt-4",
-                 mapping_model: str = "gpt-4",
-                 lmstudio_server: str = "http://localhost:1234",
-                 huggingface_url: str = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf",
                  verbose: bool=False,
                  extract_namespaces: bool=False,
                  namespaces: dict={'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
@@ -30,6 +24,13 @@ class PowerpointPipeline:
                                    'v':"urn:schemas-microsoft-com:vml"
                                    },
                  ):
+    
+        self.verbose=verbose
+        self.extract_namespaces=extract_namespaces
+        self.namespaces=namespaces
+        self.get_config()
+        
+    def get_config(self):
         # Load config file
         with open(get_initial_config_path(), "r") as f:
             self.config = json.load(f)
@@ -42,9 +43,15 @@ class PowerpointPipeline:
         self.output_pptx = self.config["output_pptx"]
         self.target_language = self.config["target_language"]
 
+        self.extract_namespaces = self.extract_namespaces
+        self.namespaces = self.namespaces 
         # Initialize model settings
         model_settings = ModelSettings()
-        
+        # Load GUI config
+        self.reduce_slides = model_settings.reduce_slides
+        self.update_language = model_settings.update_language
+        self.fresh_extract = model_settings.fresh_extract
+     
         # Copy relevant attributes from model settings
         self.translation_client = model_settings.translation_client
         self.mapping_client = model_settings.mapping_client
@@ -52,22 +59,23 @@ class PowerpointPipeline:
         self.mapping_model = model_settings.mapping_model
         self.translation_method = model_settings.translation_method
         self.mapping_method = model_settings.mapping_method
-        self.lmstudio_server = model_settings.lmstudio_server
-        self.huggingface_url = model_settings.huggingface_url
-        
-        self.extract_namespaces = extract_namespaces
-        self.namespaces = namespaces 
+        self.translation_api_url = model_settings.translation_api_url
+        self.mapping_api_url = model_settings.mapping_api_url
+        self.translation_headers = model_settings.translation_headers
+        self.mapping_headers = model_settings.mapping_headers
+        self.style_instructions = model_settings.style_instructions
+  
 
         self.paths = PathManager(input_file=self.pptx_path) #overall msanaged paths
 
-        if verbose: print(f"\tPPTX path: {self.pptx_path}")
-        if verbose: print(f"\tExtract path: {self.extract_path}")
-        if verbose: print(f"\tOutput folder: {self.output_folder}")
+        if self.verbose: print(f"\tPPTX path: {self.pptx_path}")
+        if self.verbose: print(f"\tExtract path: {self.extract_path}")
+        if self.verbose: print(f"\tOutput folder: {self.output_folder}")
         
-    def find_slide_files(self, root_folder: str) -> List[str]:
+    def find_slide_files(self) -> List[str]:
         """Find all slide XML files in the folder structure."""
         slide_files = []
-        for root, _, files in os.walk(root_folder):
+        for root, _, files in os.walk(self.extract_path):
             for file in files:
                 if file.startswith('slide') and file.endswith('.xml'):
                     number_part = file[5:-4]

@@ -20,6 +20,12 @@ OPENAI_MODELS = [
     "o3-mini"
 ]
 
+# DeepSeek models list
+DEEPSEEK_MODELS = [
+    "ds_V3",
+    "ds_R1"
+]
+
 # Create custom styles for smaller elements
 def create_custom_styles(style):
     # Configure smaller font sizes
@@ -128,6 +134,7 @@ class SettingsWindow:
         load_dotenv()
         self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
         self.huggingface_api_key = os.getenv("HUGGINGFACE", "")
+        self.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
 
     def clear_field(self, string_var):
         """Clear the field when it gains focus if it contains masked content"""
@@ -143,8 +150,10 @@ class SettingsWindow:
             # Update the stored original value
             if string_var == self.openai_key:
                 self.openai_api_key = current
-            else:
+            elif string_var == self.huggingface_key:
                 self.huggingface_api_key = current
+            elif string_var == self.deepseek_key:
+                self.deepseek_api_key = current
 
     def toggle_show_key(self, string_var, api_key, button):
         """Toggle between showing the actual API key and masked version"""
@@ -157,7 +166,7 @@ class SettingsWindow:
             button["text"] = "Show"
 
     def save_settings(self):
-        # Update .env file with actual values, not masked ones
+        # Create .env file if it doesn't exist
         env_path = Path('.env')
         env_path.touch(exist_ok=True)
         
@@ -166,11 +175,12 @@ class SettingsWindow:
             set_key(env_path, "OPENAI_API_KEY", self.openai_key.get())
         if not self.huggingface_key.get().startswith('*'):
             set_key(env_path, "HUGGINGFACE", self.huggingface_key.get())
+        if not self.deepseek_key.get().startswith('*'):
+            set_key(env_path, "DEEPSEEK_API_KEY", self.deepseek_key.get())
         
         # Save settings to config
         config = {
             "lmstudio_server": self.lmstudio_server.get(),
-            "lmstudio_model": self.lmstudio_model.get(),
             "translation_method": self.translation_method.get(),
             "mapping_method": self.mapping_method.get(),
             "translation_model": self.translation_model.get(),
@@ -202,7 +212,6 @@ class SettingsWindow:
         self.translation_model = tk.StringVar(value=self.parent.get_config_value("translation_model", "gpt-4"))
         self.mapping_model = tk.StringVar(value=self.parent.get_config_value("mapping_model", "gpt-4"))
         self.lmstudio_server = tk.StringVar(value=self.parent.get_config_value("lmstudio_server", "http://localhost:1234"))
-        self.lmstudio_model = tk.StringVar(value=self.parent.get_config_value("lmstudio_model", ""))
         self.huggingface_url = tk.StringVar(value=self.parent.get_config_value(
             "huggingface_url", 
             "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf"
@@ -239,12 +248,25 @@ class SettingsWindow:
         self.huggingface_entry.bind('<FocusIn>', lambda e: self.clear_field(self.huggingface_key))
         self.huggingface_entry.bind('<FocusOut>', lambda e: self.mask_field(self.huggingface_key, self.huggingface_api_key))
         
+        # DeepSeek API Key with show button
+        ttk.Label(api_frame, text="DeepSeek API Key:").pack(anchor="w")
+        key_frame = ttk.Frame(api_frame)
+        key_frame.pack(fill="x", pady=2)
+        self.deepseek_key = tk.StringVar(value="*" * 30 if self.deepseek_api_key else "")
+        self.deepseek_entry = ttk.Entry(key_frame, textvariable=self.deepseek_key, width=50)
+        self.deepseek_entry.pack(side="left", fill="x", expand=True)
+        self.deepseek_show_btn = ttk.Button(key_frame, text="Show", width=8,
+                                command=lambda: self.toggle_show_key(self.deepseek_key, self.deepseek_api_key, self.deepseek_show_btn))
+        self.deepseek_show_btn.pack(side="left", padx=(5, 0))
+        self.deepseek_entry.bind('<FocusIn>', lambda e: self.clear_field(self.deepseek_key))
+        self.deepseek_entry.bind('<FocusOut>', lambda e: self.mask_field(self.deepseek_key, self.deepseek_api_key))
+        
         # Translation Method Section
         translation_frame = ttk.LabelFrame(self.main_frame, text="Translation Settings", padding="5")
         translation_frame.pack(fill="x", pady=5)
         
         ttk.Label(translation_frame, text="Translation Method:").pack(anchor="w")
-        for method in ["OpenAI", "Google", "HuggingFace", "LMStudio"]:
+        for method in ["OpenAI", "Google", "HuggingFace", "LMStudio", "DeepSeek"]:
             ttk.Radiobutton(translation_frame, text=method, variable=self.translation_method, 
                            value=method).pack(anchor="w")
         
@@ -288,14 +310,29 @@ class SettingsWindow:
         self.translation_lmstudio_server = tk.StringVar(value=self.parent.get_config_value("translation_lmstudio_server", "http://localhost:1234"))
         ttk.Entry(self.lmstudio_translation_frame, textvariable=self.translation_lmstudio_server, width=50).pack(fill="x", pady=2)
         ttk.Label(self.lmstudio_translation_frame, text="Model:", style='Small.TLabel').pack(anchor="w")
-        self.translation_lmstudio_model = tk.StringVar(value=self.parent.get_config_value("translation_lmstudio_model", ""))
-        ttk.Entry(self.lmstudio_translation_frame, textvariable=self.translation_lmstudio_model, width=50).pack(fill="x", pady=2)
+        self.translation_model = tk.StringVar(value=self.parent.get_config_value("translation_model", "llama-3.2-3b-instruct"))
+        ttk.Entry(self.lmstudio_translation_frame, textvariable=self.translation_model, width=50).pack(fill="x", pady=2)
+        
+        # DeepSeek Translation Settings
+        self.deepseek_translation_frame = ttk.Frame(self.translation_settings_frame)
+        ttk.Label(self.deepseek_translation_frame, text="Model:", style='Small.TLabel').pack(side="left")
+        self.translation_model = tk.StringVar(value=self.parent.get_config_value("translation_model", "ds_V3"))
+        self.translation_model_dropdown = ttk.Combobox(
+            self.deepseek_translation_frame, 
+            textvariable=self.translation_model,
+            values=DEEPSEEK_MODELS,
+            state="readonly",
+            width=25,
+            style='Small.TCombobox'
+        )
+        self.translation_model_dropdown.pack(side="left", padx=5)
         
         # Update visibility based on translation method
         def update_translation_settings_visibility(*args):
             # Hide all frames
             for frame in [self.openai_translation_frame, self.google_translation_frame, 
-                         self.huggingface_translation_frame, self.lmstudio_translation_frame]:
+                         self.huggingface_translation_frame, self.lmstudio_translation_frame,
+                         self.deepseek_translation_frame]:
                 frame.pack_forget()
             
             # Show the appropriate frame based on selected method
@@ -308,6 +345,8 @@ class SettingsWindow:
                 self.huggingface_translation_frame.pack(fill="x", pady=5)
             elif method == "LMStudio":
                 self.lmstudio_translation_frame.pack(fill="x", pady=5)
+            elif method == "DeepSeek":
+                self.deepseek_translation_frame.pack(fill="x", pady=5)
         
         # Bind the update function to translation method changes
         self.translation_method.trace_add('write', update_translation_settings_visibility)
@@ -321,7 +360,7 @@ class SettingsWindow:
         # Mapping Method - Initialize with parent's value
         ttk.Label(mapping_frame, text="Mapping Method:").pack(anchor="w")
         self.mapping_method = tk.StringVar(value=self.parent.mapping_method.get())  # Get from parent
-        for method in ["OpenAI", "HuggingFace", "LMStudio"]:
+        for method in ["OpenAI", "HuggingFace", "LMStudio", "DeepSeek"]:
             method_frame = ttk.Frame(mapping_frame)
             method_frame.pack(anchor="w", fill="x", pady=1)
             
@@ -355,13 +394,18 @@ class SettingsWindow:
         
         # Model API Identifier
         ttk.Label(lmstudio_frame, text="Model API Identifier:").pack(anchor="w")
-        self.lmstudio_model = tk.StringVar(value=self.parent.get_config_value("lmstudio_model", ""))  # Changed key name
-        model_entry = ttk.Entry(lmstudio_frame, textvariable=self.lmstudio_model, width=50)
+        self.mapping_model = tk.StringVar(value=self.parent.get_config_value("mapping_model", "llama-3.2-3b-instruct"))  # Changed key name
+        model_entry = ttk.Entry(lmstudio_frame, textvariable=self.mapping_model, width=50)
         model_entry.pack(fill="x", pady=2)
         
         # Update visibility based on mapping method
         def update_visibility(*args):
             if self.mapping_method.get() == "OpenAI":
+                self.mapping_model_dropdown['values'] = OPENAI_MODELS
+                self.mapping_model_frame.pack(fill="x", pady=5)
+                lmstudio_frame.pack_forget()
+            elif self.mapping_method.get() == "DeepSeek":
+                self.mapping_model_dropdown['values'] = DEEPSEEK_MODELS
                 self.mapping_model_frame.pack(fill="x", pady=5)
                 lmstudio_frame.pack_forget()
             elif self.mapping_method.get() == "LMStudio":
