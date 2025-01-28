@@ -37,18 +37,16 @@ class ModelSettings:
 
     def _setup_clients(self) -> None:
         """Setup translation and mapping clients based on configuration"""
-        self.translation_client = self._setup_translation_client()
-        self.mapping_client = self._setup_mapping_client()
+        self._setup_translation_client()
+        self._setup_mapping_client()
 
     def _setup_translation_client(self) -> Optional[Any]:
         """Setup and return translation client based on configuration"""
         if self.translation_method == "OpenAI":
             self.translation_client = OpenAI(api_key=self.openai_api_key)
-            return self.translation_client
                 
         elif self.translation_method == "DeepSeek":
             self.translation_client = OpenAI(api_key=self.deepseek_api_key, base_url="https://api.deepseek.com")
-            return self.translation_client
             
         elif self.translation_method == "HuggingFace":
             self.translation_api_url = self.huggingface_url
