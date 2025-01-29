@@ -6,7 +6,6 @@ from typing import List, Tuple
 import xml.etree.ElementTree as ET
 from utils.path_manager import PathManager, get_initial_config_path
 import zipfile
-dotenv.load_dotenv()
 import traceback
 from utils.model_settings import ModelSettings
 

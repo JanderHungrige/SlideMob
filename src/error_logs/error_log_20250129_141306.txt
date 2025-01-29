@@ -1,0 +1,35 @@
+
+=== Error Report [2025-01-29 14:13:06] ===
+Type: TclError
+Message: unknown option "-height"
+Traceback:
+  File "/Users/jwh/Code/slidemob/src/main.py", line 102, in <module>
+    main()
+    ~~~~^^
+  File "/Users/jwh/Code/slidemob/src/main.py", line 98, in main
+    app = SlideMobGUI(root)
+  File "/Users/jwh/Code/slidemob/src/gui/main_gui.py", line 129, in __init__
+    self.create_widgets()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/jwh/Code/slidemob/src/gui/main_gui.py", line 279, in create_widgets
+    self.process_button = ttk.Button(button_frame, text="Process PowerPoint",
+                          ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                   command=self.process_presentation,
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                   style='Blue.TButton',
+                                   ^^^^^^^^^^^^^^^^^^^^^
+                                   height=2)
+                                   ^^^^^^^^^
+  File "/opt/homebrew/anaconda3/envs/stdui/lib/python3.13/tkinter/ttk.py", line 589, in __init__
+    Widget.__init__(self, master, "ttk::button", kw)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/anaconda3/envs/stdui/lib/python3.13/tkinter/ttk.py", line 534, in __init__
+    tkinter.Widget.__init__(self, master, widgetname, kw=kw)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/anaconda3/envs/stdui/lib/python3.13/tkinter/__init__.py", line 2772, in __init__
+    self.tk.call(
+    ~~~~~~~~~~~~^
+        (widgetName, self._w) + extra + self._options(cnf))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+==============================

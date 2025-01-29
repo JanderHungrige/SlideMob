@@ -141,7 +141,7 @@ class SlideTranslator():
                 )
                 
         except Exception as e:
-            print(f"Translation error. Something wrong with the LLM: {e}")
+            print(f"Translation error. Something wrong with the OpenAI API: {e}")
             return text
 
         try:
@@ -206,7 +206,7 @@ class SlideTranslator():
                 )
                 
         except Exception as e:
-            print(f"Translation error. Something wrong with the LLM: {e}")
+            print(f"Translation error. Something wrong with the DeepSeek API: {e}")
             return text
 
         try:

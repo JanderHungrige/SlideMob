@@ -23,36 +23,47 @@ class SlideMobGUI(PowerpointPipeline):
         self.root.title("SlideMob PowerPoint Processor")
         self.root.geometry("700x790")
         
-        # Initialize LMStudio settings
-
+        # Initialize variables with default values
+        self.translation_model = "gpt-4"
+        self.mapping_model = "gpt-4"
+        self.translation_api_url = "http://localhost:1234"
+        self.mapping_api_url = "http://localhost:1234"
         
-        # Load language codes first
-        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_languages.json")) as f:
-            language_config = json.load(f)
-        self.language_options = [lang["language"].split(" (")[0] for lang in language_config["languages"]]
-        
-        # Initialize tk variables
+        # Initialize all tk variables first
         self.gui_pptx_path = tk.StringVar(self.root)
         self.gui_output_path = tk.StringVar(self.root)
         self.gui_target_language = tk.StringVar(self.root, value="English")
         self.gui_style_instructions = tk.StringVar(self.root)
         self.translation_method = tk.StringVar(self.root, value="OpenAI")
         self.mapping_method = tk.StringVar(self.root, value="OpenAI")
-        self.translation_model = tk.StringVar(self.root, value="gpt-4")
-        self.mapping_model = tk.StringVar(self.root, value="gpt-4")
-        self.translation_api_url = tk.StringVar(self.root, value="http://localhost:1234")
-        self.mapping_api_url = tk.StringVar(self.root, value="http://localhost:1234")
-        # Update the parent class variables whenever GUI vars change
-        self.gui_pptx_path.trace_add('write', self._update_pptx_path)
-        self.gui_output_path.trace_add('write', self._update_output_path)
+        self.translation_method_display = tk.StringVar(self.root)
+        self.mapping_method_display = tk.StringVar(self.root)
         
-        # Checkboxes
+        # Initialize checkboxes variables
         self.extract_var = tk.BooleanVar(value=True)
         self.polish_var = tk.BooleanVar(value=False)
         self.translate_var = tk.BooleanVar(value=True)
         self.update_language = tk.BooleanVar(value=False)
         self.reduce_slides = tk.BooleanVar(value=False)
         self.merge_runs_var = tk.BooleanVar(value=False)
+        
+        # Now load config to override defaults
+        self.load_gui_config()
+        
+        # Update the display text initially
+        self._update_translation_display()
+        self._update_mapping_display()
+        
+        # Add trace callbacks
+        self.translation_method.trace_add("write", self._update_translation_display)
+        self.mapping_method.trace_add("write", self._update_mapping_display)
+        self.gui_pptx_path.trace_add("write", self._update_pptx_path)
+        self.gui_output_path.trace_add("write", self._update_output_path)
+        
+        # Load language codes first
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_languages.json")) as f:
+            language_config = json.load(f)
+        self.language_options = [lang["language"].split(" (")[0] for lang in language_config["languages"]]
         
         # Load the logo image
         current_dir = os.path.dirname(__file__)
@@ -127,8 +138,6 @@ class SlideMobGUI(PowerpointPipeline):
         self.stop_requested = False
 
         self.create_widgets()
-
-        self.load_gui_config()
 
     def _update_pptx_path(self, *args):
         """Update the parent class pptx_path when GUI var changes"""
@@ -256,12 +265,12 @@ class SlideMobGUI(PowerpointPipeline):
         
         # Translation Method
         ttk.Label(methods_row, text="Translation Method:").pack(side="left")
-        self.translation_method_label = ttk.Label(methods_row, textvariable=self.translation_method)
+        self.translation_method_label = ttk.Label(methods_row, textvariable=self.translation_method_display)
         self.translation_method_label.pack(side="left", padx=5)
         
         # Mapping Method
         ttk.Label(methods_row, text="Mapping Method:").pack(side="left", padx=(20, 0))
-        self.mapping_method_label = ttk.Label(methods_row, textvariable=self.mapping_method)
+        self.mapping_method_label = ttk.Label(methods_row, textvariable=self.mapping_method_display)
         self.mapping_method_label.pack(side="left", padx=5)
 
         # Style Instructions
@@ -277,13 +286,15 @@ class SlideMobGUI(PowerpointPipeline):
         button_frame.pack(pady=20)
 
         self.process_button = ttk.Button(button_frame, text="Process PowerPoint", 
-                                       command=self.process_presentation, style='Blue.TButton')
-        self.process_button.pack(side="left", padx=10, pady=10)
+                                       command=self.process_presentation, 
+                                       style='Blue.TButton')
+        self.process_button.pack(side="left", padx=10, pady=10, ipady=5)
 
         self.stop_button = ttk.Button(button_frame, text="Stop", 
-                                     command=self.stop_processing, style='Blue.TButton',
+                                     command=self.stop_processing, 
+                                     style='Blue.TButton',
                                      width=5)
-        self.stop_button.pack(side="left", padx=10, pady=10)
+        self.stop_button.pack(side="left", padx=10, pady=10, ipady=5)
         self.stop_button.configure(state="disabled")  # Initially disabled
         
         # Status
@@ -320,7 +331,7 @@ class SlideMobGUI(PowerpointPipeline):
         self.root.update()
 
     def process_presentation(self):
-        if not self.pptx_path or not self.output_path:
+        if not self.gui_pptx_path.get() or not self.gui_output_path.get():
             messagebox.showerror("Error", "Please select both input file and output location")
             return
         
@@ -335,7 +346,7 @@ class SlideMobGUI(PowerpointPipeline):
             # Save GUI config as soon as process button is clicked
             self.save_gui_config()
             
-            path_manager = PathManager(self.pptx_path)
+            path_manager = PathManager(self.gui_pptx_path.get(), self.gui_output_path.get())
             config = create_config(
                 path_manager=path_manager,
                 target_language=self.gui_target_language.get()
@@ -470,10 +481,10 @@ class SlideMobGUI(PowerpointPipeline):
                 'style_instructions': self.gui_style_instructions.get(),
                 'pptx_path': self.gui_pptx_path.get(),
                 'output_folder': self.gui_output_path.get(),
-                'translation_model': self.translation_model.get(),
-                'mapping_model': self.mapping_model.get(),  
-                'translation_api_url': self.translation_api_url.get(),
-                'mapping_api_url': self.mapping_api_url.get()
+                'translation_model': self.translation_model,
+                'mapping_model': self.mapping_model,
+                'translation_api_url': self.translation_api_url,
+                'mapping_api_url': self.mapping_api_url
             }
             
             config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_gui.json")
@@ -513,6 +524,21 @@ class SlideMobGUI(PowerpointPipeline):
             
             # Update config with new values
             config.update(new_values)
+            
+            # Update instance variables with new values
+            for key, value in new_values.items():
+                if hasattr(self, key):
+                    # Handle StringVar objects differently from regular strings
+                    if isinstance(getattr(self, key), tk.StringVar):
+                        getattr(self, key).set(value)
+                    else:
+                        setattr(self, key, value)
+                    
+            # Update the displays if models changed
+            if 'translation_model' in new_values:
+                self._update_translation_display()
+            if 'mapping_model' in new_values:
+                self._update_mapping_display()
 
             # Save updated config
             with open(config_path, 'w') as f:
@@ -520,6 +546,18 @@ class SlideMobGUI(PowerpointPipeline):
                 
         except Exception as e:
             print(f"Error updating config: {e}")
+
+    def _update_translation_display(self, *args):
+        """Update the translation method display text"""
+        method = self.translation_method.get()
+        model_suffix = str(self.translation_model)[-10:] if self.translation_model else ""
+        self.translation_method_display.set(f"{method} ({model_suffix})")
+
+    def _update_mapping_display(self, *args):
+        """Update the mapping method display text"""
+        method = self.mapping_method.get()
+        model_suffix = str(self.mapping_model)[-10:] if self.mapping_model else ""
+        self.mapping_method_display.set(f"{method} ({model_suffix})")
 
     def show_error(self, exc, val, tb):
         """Show error message in a dialog"""

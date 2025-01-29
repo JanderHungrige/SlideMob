@@ -3,6 +3,8 @@ import json
 from openai import OpenAI
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
+from dotenv import load_dotenv
+load_dotenv()
 
 @dataclass
 class ModelSettings:
@@ -14,6 +16,8 @@ class ModelSettings:
     translation_client: str = None
 
     def __post_init__(self):
+        # Force reload environment variables
+        load_dotenv(override=True)
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         self.huggingface_api_key = os.getenv("HUGGINGFACE")
         self.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
@@ -42,42 +46,47 @@ class ModelSettings:
 
     def _setup_translation_client(self) -> Optional[Any]:
         """Setup and return translation client based on configuration"""
-        if self.translation_method == "OpenAI":
-            self.translation_client = OpenAI(api_key=self.openai_api_key)
+        try:
+            if self.translation_method == "OpenAI":
+                self.translation_client = OpenAI(api_key=self.openai_api_key)
+                self.translation_headers = {"Authorization": f"Bearer {self.openai_api_key}"}
+                    
+            elif self.translation_method == "DeepSeek":
+                self.translation_client = OpenAI(api_key=self.deepseek_api_key, base_url="https://api.deepseek.com")
                 
-        elif self.translation_method == "DeepSeek":
-            self.translation_client = OpenAI(api_key=self.deepseek_api_key, base_url="https://api.deepseek.com")
-            
-        elif self.translation_method == "HuggingFace":
-            self.translation_api_url = self.huggingface_url
-            self.translation_headers = {"Authorization": f"Bearer {self.huggingface_api_key}"}
+            elif self.translation_method == "HuggingFace":
+                self.translation_api_url = self.huggingface_url
+                self.translation_headers = {"Authorization": f"Bearer {self.huggingface_api_key}"}
 
-        elif self.translation_method == "LMStudio":
-            self.translation_api_url = f"{self.lmstudio_server.rstrip('/')}/v1/chat/completions"
-            self.translation_headers = {"Content-Type": "application/json"}
+            elif self.translation_method == "LMStudio":
+                self.translation_api_url = f"{self.lmstudio_server.rstrip('/')}/v1/chat/completions"
+                self.translation_headers = {"Content-Type": "application/json"}
 
 
-        print(f"\tUnsupported translation method: {self.translation_method}")
-        return None
+        except Exception as e:
+            print(f"model_settings.py: Error setting up translation client: {e}")
+            return None
 
     def _setup_mapping_client(self) -> Optional[Any]:
         """Setup and return mapping client based on configuration"""
-        if self.mapping_method == "OpenAI":
-            self.mapping_client = OpenAI(api_key=self.openai_api_key)
+        try:
+            if self.mapping_method == "OpenAI":
+                self.mapping_client = OpenAI(api_key=self.openai_api_key)
 
-        elif self.mapping_method == "DeepSeek":
-            self.mapping_client = OpenAI(api_key=self.deepseek_api_key, base_url="https://api.deepseek.com")
+            elif self.mapping_method == "DeepSeek":
+                self.mapping_client = OpenAI(api_key=self.deepseek_api_key, base_url="https://api.deepseek.com")
 
-        elif self.mapping_method == "HuggingFace":
-            self.mapping_api_url = self.huggingface_url
-            self.mapping_headers = {"Authorization": f"Bearer {self.huggingface_api_key}"}
+            elif self.mapping_method == "HuggingFace":
+                self.mapping_api_url = self.huggingface_url
+                self.mapping_headers = {"Authorization": f"Bearer {self.huggingface_api_key}"}
 
-        elif self.mapping_method == "LMStudio":
-            self.mapping_api_url = f"{self.lmstudio_server.rstrip('/')}/v1/chat/completions"
-            self.mapping_headers = {"Content-Type": "application/json"}
+            elif self.mapping_method == "LMStudio":
+                self.mapping_api_url = f"{self.lmstudio_server.rstrip('/')}/v1/chat/completions"
+                self.mapping_headers = {"Content-Type": "application/json"}
 
-        print(f"\tUnsupported mapping method: {self.mapping_method}")
-        return None 
+        except Exception as e:
+            print(f"model_settings.py: Error setting up mapping client: {e}")
+            return None 
     
     def _load_gui_config(self) -> None:
         """Load configuration from config_gui.json"""

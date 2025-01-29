@@ -7,12 +7,12 @@
     "reduce_slides": false,
     "target_language": "German",
     "translation_method": "OpenAI",
-    "translation_model": "ds_R1",
     "mapping_method": "OpenAI",
-    "mapping_model": "gpt-4o",
     "style_instructions": "",
     "pptx_path": "/Users/jwh/Downloads/SLIDEMOBTEST.pptx",
     "output_folder": "/Users/jwh/Downloads",
-    "lmstudio_server": "http://localhost:1234",
-    "huggingface_url": "https://api-inference.huggingface.co/models/meta-llama/Llama-2-13b-chat-hf"
+    "translation_model": "gpt-3.5-turbo",
+    "mapping_model": "gpt-4o-mini",
+    "translation_api_url": "",
+    "mapping_api_url": ""
 }

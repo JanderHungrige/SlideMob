@@ -4,7 +4,7 @@ def get_initial_config_path() -> str:
     return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "src/config.json")
 
 class PathManager:
-    def __init__(self, input_file: str):
+    def __init__(self, input_file: str, output_file: str=None):
         # Project root (where the application is installed)
         self.project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         print(self.project_root)
@@ -16,8 +16,12 @@ class PathManager:
         
         # Derived paths
         self.extracted_dir = os.path.join(self.working_dir, "extracted_pptx")
-        self.output_dir = os.path.join(self.working_dir, "output")
-        self.output_pptx=os.path.join(self.output_dir, f"translated_{os.path.basename(input_file)}")
+        if output_file:
+            self.output_dir = os.path.dirname(output_file)
+            self.output_pptx=os.path.join(self.output_dir, f"translated_{os.path.basename(input_file)}")
+        else:
+            self.output_dir = os.path.join(self.working_dir, "output")
+            self.output_pptx=os.path.join(self.output_dir, f"translated_{os.path.basename(input_file)}")
 
     def get_config_path(self) -> str:
         return os.path.join(self.project_root, "src/config.json")
