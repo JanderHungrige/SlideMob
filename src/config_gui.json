@@ -6,7 +6,7 @@
     "update_language": false,
     "reduce_slides": false,
     "target_language": "German",
-    "translation_method": "LMStudio",
+    "translation_method": "OpenAI",
     "mapping_method": "LMStudio",
     "style_instructions": "",
     "pptx_path": "/Users/jwh/Downloads/SLIDEMOBTEST.pptx",

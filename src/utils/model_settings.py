@@ -55,11 +55,11 @@ class ModelSettings:
                 self.translation_client = OpenAI(api_key=self.deepseek_api_key, base_url="https://api.deepseek.com")
                 
             elif self.translation_method == "HuggingFace":
-                self.translation_api_url = self.huggingface_url
+                self.translation_api_url = self.translation_api_url
                 self.translation_headers = {"Authorization": f"Bearer {self.huggingface_api_key}"}
 
             elif self.translation_method == "LMStudio":
-                self.translation_api_url = f"{self.lmstudio_server.rstrip('/')}/v1/chat/completions"
+                self.translation_api_url = f"{self.translation_api_url.rstrip('/')}/v1/chat/completions"
                 self.translation_headers = {"Content-Type": "application/json"}
 
 
@@ -77,11 +77,11 @@ class ModelSettings:
                 self.mapping_client = OpenAI(api_key=self.deepseek_api_key, base_url="https://api.deepseek.com")
 
             elif self.mapping_method == "HuggingFace":
-                self.mapping_api_url = self.huggingface_url
+                self.mapping_api_url = self.mapping_api_url
                 self.mapping_headers = {"Authorization": f"Bearer {self.huggingface_api_key}"}
 
             elif self.mapping_method == "LMStudio":
-                self.mapping_api_url = f"{self.lmstudio_server.rstrip('/')}/v1/chat/completions"
+                self.mapping_api_url = f"{self.mapping_api_url.rstrip('/')}/v1/chat/completions"
                 self.mapping_headers = {"Content-Type": "application/json"}
 
         except Exception as e:

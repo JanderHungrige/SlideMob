@@ -369,7 +369,10 @@ class SlideTranslator():
                 elif self.mapping_model_type == "unknown":
                     print(f"Warning: Mapping model type not recognized: {self.mapping_model_type}")
                     return {}
-
+                print(f"Formatted prompt: {formatted_prompt}")
+                print(f"Mapping API URL: {self.mapping_api_url}")
+                print(f"Mapping headers: {self.mapping_headers}")
+                print(f"Mapping model: {self.mapping_model}")
                 payload = {
                     "messages": [
                         {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
