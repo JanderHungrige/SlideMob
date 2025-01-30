@@ -54,11 +54,20 @@ class SlideTranslator():
         # Check model type for LMStudio
         if hasattr(self, 'translation_model') and self.translation_model:
             if re.search(r'\bllama\b', self.translation_model.lower()):
-                self.model_type = "llama"
+                self.translation_model_type = "llama"
             elif re.search(r'\bdeepseek\b', self.translation_model.lower()):
-                self.model_type = "deepseek"
+                self.translation_model_type = "deepseek"
             else:
-                self.model_type = "unknown"
+                self.translation_model_type = "unknown"
+
+        # Check model type for LMStudio
+        if hasattr(self, 'mapping_model') and self.mapping_model:
+            if re.search(r'\bllama\b', self.mapping_model.lower()):
+                self.mapping_model_type = "llama"
+            elif re.search(r'\bdeepseek\b', self.translation_model.lower()):
+                self.mapping_model_type = "deepseek"
+            else:
+                self.mapping_model_type = "unknown"
 
     def create_translation_map(self, text_elements: List[ET.Element], original_text_elements: set) -> dict:
         """Create a mapping between original text and their translations."""
@@ -252,10 +261,13 @@ class SlideTranslator():
     def translate_text_lmstudio(self, text: str) -> str:
         """Translate text using local LMStudio server."""
 
-        if self.translation_model == "llama":
+        if self.translation_model_type == "llama":
             prompt_0 = translation_prompt_llama2_0(text, self.target_language, self.style_instructions)
-        elif self.translation_model == "deepseek":
+        elif self.translation_model_type == "deepseek":
             prompt_0 = translation_prompt_deepseek_0(text, self.target_language, self.style_instructions)
+        elif self.translation_model_type == "unknown":
+            print(f"Warning: Translation model type not recognized: {self.translation_model_type}")
+            return text
         
         payload = {
             "messages": [
@@ -350,10 +362,13 @@ class SlideTranslator():
                 
             elif self.mapping_method == "LMStudio":
                 # Use existing LMStudio implementation
-                if self.mapping_model == "llama":
+                if self.mapping_model_type == "llama":
                     formatted_prompt = mapping_prompt_llama2(original_text_elements, self.original_text, translated_text)
-                elif self.mapping_model == "deepseek":
+                elif self.mapping_model_type == "deepseek":
                     formatted_prompt = mapping_prompt_deepseek(original_text_elements, self.original_text, translated_text)
+                elif self.mapping_model_type == "unknown":
+                    print(f"Warning: Mapping model type not recognized: {self.mapping_model_type}")
+                    return {}
 
                 payload = {
                     "messages": [
@@ -366,8 +381,8 @@ class SlideTranslator():
                 
                 try:
                     response = requests.post(
-                        self.lmstudio_server,
-                        headers=self.lmstudio_headers,
+                        self.mapping_api_url,
+                        headers=self.mapping_headers,
                         json=payload
                     )
                     response.raise_for_status()

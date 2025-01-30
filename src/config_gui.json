@@ -6,13 +6,13 @@
     "update_language": false,
     "reduce_slides": false,
     "target_language": "German",
-    "translation_method": "OpenAI",
-    "mapping_method": "OpenAI",
+    "translation_method": "LMStudio",
+    "mapping_method": "LMStudio",
     "style_instructions": "",
     "pptx_path": "/Users/jwh/Downloads/SLIDEMOBTEST.pptx",
     "output_folder": "/Users/jwh/Downloads",
-    "translation_model": "gpt-3.5-turbo",
-    "mapping_model": "gpt-4o-mini",
-    "translation_api_url": "",
-    "mapping_api_url": ""
+    "translation_model": "llama-3.2-3b-instruct",
+    "mapping_model": "llama-3.2-3b-instruct",
+    "translation_api_url": "http://127.0.0.1:1234",
+    "mapping_api_url": "http://127.0.0.1:1234"
 }
