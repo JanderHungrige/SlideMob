@@ -29,6 +29,22 @@ DEEPSEEK_MODELS = [
     "deepseek-reasoner"
 ]
 
+# Add Azure OpenAI models and configuration
+AZURE_OPENAI_MODELS = [
+    "gpt-35-turbo",
+    "gpt-4",
+    "gpt-4-32k"
+]
+
+# Add Azure configuration
+AZURE_CONFIG = {
+    "api_version": "2024-02-15-preview",
+    "temperature": 0.7,
+    "frequency_penalty": 0.0,
+    "presence_penalty": 0.0,
+    "max_tokens_out": 1000
+}
+
 # Create custom styles for smaller elements
 def create_custom_styles(style):
     # Configure smaller font sizes
@@ -186,6 +202,8 @@ class SettingsWindow:
         translation_api_url = ""
         mapping_model = ""
         mapping_api_url = ""
+        azure_translation_config = None
+        azure_mapping_config = None
         
         # Get translation settings based on method
         if self.translation_method.get() == "OpenAI":
@@ -197,6 +215,15 @@ class SettingsWindow:
             translation_api_url = self.translation_huggingface_url.get()
         elif self.translation_method.get() == "DeepSeek":
             translation_model = self.deepseek_translation_model.get()
+        elif self.translation_method.get() == "Azure OpenAI":
+            translation_model = self.azure_translation_model.get()
+            translation_api_url = self.azure_endpoint.get()
+            azure_translation_config = {
+                "temperature": self.translation_temperature.get(),
+                "frequency_penalty": self.translation_frequency_penalty.get(),
+                "presence_penalty": self.translation_presence_penalty.get(),
+                "max_tokens_out": self.translation_max_tokens.get()
+            }
 
         # Get mapping settings based on method
         if self.mapping_method.get() == "OpenAI":
@@ -208,6 +235,15 @@ class SettingsWindow:
             mapping_api_url = self.mapping_huggingface_url.get()
         elif self.mapping_method.get() == "DeepSeek":
             mapping_model = self.deepseek_mapping_model.get()
+        elif self.mapping_method.get() == "Azure OpenAI":
+            mapping_model = self.azure_mapping_model.get()
+            mapping_api_url = self.azure_mapping_endpoint.get()
+            azure_mapping_config = {
+                "temperature": self.mapping_temperature.get(),
+                "frequency_penalty": self.mapping_frequency_penalty.get(),
+                "presence_penalty": self.mapping_presence_penalty.get(),
+                "max_tokens_out": self.mapping_max_tokens.get()
+            }
 
         # Create config dictionary with all settings
         config = {
@@ -216,7 +252,9 @@ class SettingsWindow:
             "translation_model": translation_model,
             "translation_api_url": translation_api_url,
             "mapping_model": mapping_model,
-            "mapping_api_url": mapping_api_url
+            "mapping_api_url": mapping_api_url,
+            "azure_translation_config": azure_translation_config,
+            "azure_mapping_config": azure_mapping_config
         }
         
         # Update parent's config
@@ -241,6 +279,7 @@ class SettingsWindow:
         self.openai_translation_model = tk.StringVar(value=self.parent.translation_model)
         self.lmstudio_translation_model = tk.StringVar(value=self.parent.translation_model)
         self.deepseek_translation_model = tk.StringVar(value=self.parent.translation_model)
+        self.azure_translation_model = tk.StringVar(value=self.parent.translation_model)
         
         # Initialize mapping model variables for each service
         self.openai_mapping_model = tk.StringVar(value=self.parent.mapping_model)
@@ -254,6 +293,11 @@ class SettingsWindow:
         # Load HuggingFace URLs from parent's config
         self.translation_huggingface_url = tk.StringVar(value=self.parent.translation_api_url)
         self.mapping_huggingface_url = tk.StringVar(value=self.parent.mapping_api_url)
+        self.azure_endpoint = tk.StringVar(value=self.parent.translation_api_url)
+        
+        # Add this line around line 287, after the other model initializations:
+        self.azure_mapping_model = tk.StringVar(value=self.parent.mapping_model)
+        self.azure_mapping_endpoint = tk.StringVar(value=self.parent.mapping_api_url)
 
     def create_widgets(self):
 
@@ -264,7 +308,7 @@ class SettingsWindow:
             # Hide all frames
             for frame in [self.openai_translation_frame, self.google_translation_frame, 
                          self.huggingface_translation_frame, self.lmstudio_translation_frame,
-                         self.deepseek_translation_frame]:
+                         self.deepseek_translation_frame, self.azure_translation_frame]:
                 frame.pack_forget()
             
             # Show the appropriate frame based on selected method
@@ -279,6 +323,8 @@ class SettingsWindow:
                 self.lmstudio_translation_frame.pack(fill="x", pady=5)
             elif translation_method == "DeepSeek":
                 self.deepseek_translation_frame.pack(fill="x", pady=5)
+            elif translation_method == "Azure OpenAI":
+                self.azure_translation_frame.pack(fill="x", pady=5)
 
         # Update visibility based on mapping method
         def update_mapping_settings_visibility(*args):
@@ -351,9 +397,10 @@ class SettingsWindow:
         self.translation_frame.pack(fill="x", pady=5)
 
         ttk.Label(self.translation_frame, text="Translation Method:").pack(anchor="w")
-        for method in ["OpenAI", "Google", "HuggingFace", "LMStudio", "DeepSeek"]:
+        for method in ["OpenAI", "Azure OpenAI", "Google", "HuggingFace", "LMStudio", "DeepSeek"]:
             ttk.Frame(self.translation_frame).pack(anchor="w", fill="x")
-            ttk.Radiobutton(self.translation_frame, text=method, variable=self.translation_method, 
+            ttk.Radiobutton(self.translation_frame, text=method, 
+                variable=self.translation_method, 
                 value=method, style='Small.TRadiobutton').pack(side="left")
         
         # Method-specific Translation Settings | Frame
@@ -417,6 +464,27 @@ class SettingsWindow:
         self.deepseek_translation_model_dropdown.pack(side="left", padx=5)
         self.deepseek_translation_frame.pack(fill="x", pady=5)
 
+        # Add Azure OpenAI settings frame
+        self.azure_translation_frame = ttk.Frame(self.translation_settings_frame)
+        ttk.Label(self.azure_translation_frame, text="Model:", style='Small.TLabel').pack(side="left")
+
+        self.azure_translation_model_dropdown = ttk.Combobox(
+            self.azure_translation_frame, 
+            textvariable=self.azure_translation_model,
+            values=AZURE_OPENAI_MODELS,
+            state="readonly",
+            width=25,
+            style='Small.TCombobox'
+        )
+        self.azure_translation_model_dropdown.pack(side="left", padx=5)
+
+        # Add Azure endpoint settings
+        ttk.Label(self.azure_translation_frame, text="Endpoint:", style='Small.TLabel').pack(anchor="w")
+        ttk.Entry(self.azure_translation_frame, textvariable=self.azure_endpoint, width=50).pack(fill="x", pady=2)
+
+        # Add Azure configuration frame to both translation and mapping settings
+        self.azure_translation_config_frame = self.create_azure_config_frame(self.azure_translation_frame, "translation")
+
         # Bind the update function to translation method changes
         self.translation_method.trace_add('write', update_translation_settings_visibility)
         # Initial visibility check
@@ -429,10 +497,10 @@ class SettingsWindow:
 
         # Mapping Method - Initialize with parent's value
         ttk.Label(self.mapping_frame, text="Mapping Method:").pack(anchor="w")
-        for method in ["OpenAI", "HuggingFace", "LMStudio", "DeepSeek"]:
+        for method in ["OpenAI", "Azure OpenAI", "HuggingFace", "LMStudio", "DeepSeek"]:
             ttk.Frame(self.mapping_frame).pack(anchor="w", fill="x")
             ttk.Radiobutton(self.mapping_frame, text=method, 
-                           variable=self.mapping_method,  # Remove .get()
+                           variable=self.mapping_method, 
                            value=method, 
                            style='Small.TRadiobutton').pack(side="left")
         
@@ -498,6 +566,26 @@ class SettingsWindow:
         ttk.Entry(self.huggingface_frame, textvariable=self.mapping_huggingface_url, 
                   width=50).pack(fill="x", pady=2)
 
+        # Add Azure OpenAI mapping settings frame
+        self.azure_mapping_frame = ttk.Frame(self.mapping_model_settings_frame)
+        ttk.Label(self.azure_mapping_frame, text="Model:", style='Small.TLabel').pack(side="left")
+
+        self.azure_mapping_model_dropdown = ttk.Combobox(
+            self.azure_mapping_frame, 
+            textvariable=self.azure_mapping_model,
+            values=AZURE_OPENAI_MODELS,
+            state="readonly",
+            width=25,
+            style='Small.TCombobox'
+        )
+        self.azure_mapping_model_dropdown.pack(side="left", padx=5)
+
+        # Add Azure endpoint settings for mapping
+        ttk.Label(self.azure_mapping_frame, text="Endpoint:", style='Small.TLabel').pack(anchor="w")
+        ttk.Entry(self.azure_mapping_frame, textvariable=self.azure_mapping_endpoint, width=50).pack(fill="x", pady=2)
+
+        # Add Azure configuration frame to both translation and mapping settings
+        self.azure_mapping_config_frame = self.create_azure_config_frame(self.azure_mapping_frame, "mapping")
 
         self.mapping_method.trace_add('write', update_mapping_settings_visibility)
         # Initial visibility check
@@ -515,3 +603,42 @@ class SettingsWindow:
             self.root.destroy()
         
         self.root.protocol("WM_DELETE_WINDOW", on_closing)
+
+    # Add Azure configuration frame to both translation and mapping settings
+    def create_azure_config_frame(self, parent_frame, prefix):
+        config_frame = ttk.LabelFrame(parent_frame, text="Azure Configuration", padding="5")
+        config_frame.pack(fill="x", pady=5)
+        
+        # Temperature
+        temp_frame = ttk.Frame(config_frame)
+        temp_frame.pack(fill="x", pady=2)
+        ttk.Label(temp_frame, text="Temperature:", style='Small.TLabel').pack(side="left")
+        temp_var = tk.DoubleVar(value=AZURE_CONFIG["temperature"])
+        setattr(self, f"{prefix}_temperature", temp_var)
+        ttk.Entry(temp_frame, textvariable=temp_var, width=10).pack(side="left", padx=5)
+        
+        # Frequency Penalty
+        freq_frame = ttk.Frame(config_frame)
+        freq_frame.pack(fill="x", pady=2)
+        ttk.Label(freq_frame, text="Frequency Penalty:", style='Small.TLabel').pack(side="left")
+        freq_var = tk.DoubleVar(value=AZURE_CONFIG["frequency_penalty"])
+        setattr(self, f"{prefix}_frequency_penalty", freq_var)
+        ttk.Entry(freq_frame, textvariable=freq_var, width=10).pack(side="left", padx=5)
+        
+        # Presence Penalty
+        pres_frame = ttk.Frame(config_frame)
+        pres_frame.pack(fill="x", pady=2)
+        ttk.Label(pres_frame, text="Presence Penalty:", style='Small.TLabel').pack(side="left")
+        pres_var = tk.DoubleVar(value=AZURE_CONFIG["presence_penalty"])
+        setattr(self, f"{prefix}_presence_penalty", pres_var)
+        ttk.Entry(pres_frame, textvariable=pres_var, width=10).pack(side="left", padx=5)
+        
+        # Max Tokens
+        token_frame = ttk.Frame(config_frame)
+        token_frame.pack(fill="x", pady=2)
+        ttk.Label(token_frame, text="Max Tokens:", style='Small.TLabel').pack(side="left")
+        token_var = tk.IntVar(value=AZURE_CONFIG["max_tokens_out"])
+        setattr(self, f"{prefix}_max_tokens", token_var)
+        ttk.Entry(token_frame, textvariable=token_var, width=10).pack(side="left", padx=5)
+        
+        return config_frame

@@ -14,6 +14,7 @@ from utils.promts import (translation_prompt_openai_0, translation_prompt_openai
                          translation_prompt_llama2_0, translation_prompt_llama2_1,
                          mapping_prompt_openai, mapping_prompt_llama2,
                          translation_prompt_deepseek_0, mapping_prompt_deepseek)
+from openai import AzureOpenAI
 
 class TranslationResponse(BaseModel):
     translation: str
@@ -97,6 +98,8 @@ class SlideTranslator():
                         translated_text = self.translate_text_huggingface(self.original_text)
                     elif self.translation_method == "LMStudio":
                         translated_text = self.translate_text_lmstudio(self.original_text)
+                    elif self.translation_method == "Azure OpenAI":
+                        translated_text = self.translate_text_azure_openai(self.original_text)
     
                     if self.verbose:     
                         print(f"\tOriginal paragraph: {self.original_text}")
@@ -127,7 +130,40 @@ class SlideTranslator():
             return "not_translatable"
             
         # If we get here, the text contains some actual content
-        return "translatable"      
+        return "translatable"     
+
+    def use_translation_OpenAIclient(self, prompt: str, temperature: float, response_format: str) -> str:
+        try:
+            response = self.translation_client.chat.completions.create(
+                model=self.translation_model,
+                    messages=[
+                        {"role": "system", "content": "You are a professional translator."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=temperature,
+                    response_format=response_format
+                )
+            return response
+        
+        except Exception as e:
+            print(f"Translation error. Something wrong with the OpenAI API: {e}")
+
+    def use_mapping_OpenAIclient(self, prompt: str, temperature: float, response_format: str) -> str:
+        try:
+            response = self.mapping_client.chat.completions.create(
+                model=self.mapping_model,
+                    messages=[
+                        {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=temperature,
+                    response_format=response_format
+                )
+            return response
+        
+        except Exception as e:
+            print(f"Mapping error. Something wrong with the OpenAI API: {e}")
+
 
     def translate_text_OpenAI(self, text: str) -> str:
         # result = self.analyze_text(text)
@@ -140,15 +176,7 @@ class SlideTranslator():
         prompt_1 = translation_prompt_openai_1(text, self.target_language, self.style_instructions)
                 
         try:
-            response = self.translation_client.chat.completions.create(
-                model=self.translation_model,
-                    messages=[
-                        {"role": "system", "content": "You are a professional translator."},
-                        {"role": "user", "content": prompt_1}
-                    ],
-                    temperature=1.5
-                )
-                
+            response = self.use_translation_OpenAIclient(prompt_0, 1.5, "text")
         except Exception as e:
             print(f"Translation error. Something wrong with the OpenAI API: {e}")
             return text
@@ -205,15 +233,7 @@ class SlideTranslator():
         prompt_0 = translation_prompt_deepseek_0(text, self.target_language, self.style_instructions)
                 
         try:
-            response = self.translation_client.chat.completions.create(
-                model=self.translation_model,
-                    messages=[
-                        {"role": "system", "content": "You are a professional translator."},
-                        {"role": "user", "content": prompt_0}
-                    ],
-                    temperature=1.5
-                )
-                
+            response = self.use_translation_OpenAIclient(prompt_0, 1.5)
         except Exception as e:
             print(f"Translation error. Something wrong with the DeepSeek API: {e}")
             return text
@@ -269,25 +289,31 @@ class SlideTranslator():
             print(f"Warning: Translation model type not recognized: {self.translation_model_type}")
             return text
         
-        payload = {
-            "messages": [
-                {"role": "system", "content": "You are a professional translator."},
-                {"role": "user", "content": prompt_0}
-            ],
-            "model": self.translation_model,
-            "temperature": 1.5
-        }
-        
-        try:
+        viaOpenAIclient = True
+        if viaOpenAIclient:
+            response_format = {"type": "json_object"}
+            response = self.use_translation_OpenAIclient(prompt_0, 1.5, response_format)
+        else:
+            payload = {
+                "messages": [
+                    {"role": "system", "content": "You are a professional translator."},
+                    {"role": "user", "content": prompt_0}
+                ],
+                "model": self.translation_model,
+                "temperature": 1.5
+            }
+            
             response = requests.post(
                 self.translation_api_url,
                 headers=self.translation_headers,
-                json=payload
+                json=payload,
+                timeout=42
             )
             response.raise_for_status()
-            
-            response_data = response.json()
-            content = response_data['choices'][0]['message']['content']
+            response = response.json()
+        try:
+
+            content = response['choices'][0]['message']['content']
             
             # Extract text between <translation> tags
             translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
@@ -296,11 +322,50 @@ class SlideTranslator():
                     print(f"\tTranslation match: {translation_match.group(1).strip()}")
                 return translation_match.group(1).strip()
             return text
-            
+                
         except Exception as e:
             print(f"Translation error with LMStudio: {e}")
             print("Full traceback:")
             print(traceback.format_exc())
+            return text
+        
+    def translate_text_azure_openai(self, text: str) -> str:
+        """Translate text using Azure OpenAI"""
+        try:
+            # Get Azure config from settings or use defaults
+            azure_config = getattr(self, 'azure_translation_config', AZURE_CONFIG)
+            
+            model_cfg = {
+                "engine": self.translation_model,
+                "api_version": "2024-02-15-preview",
+                "temperature": azure_config["temperature"],
+                "frequency_penalty": azure_config["frequency_penalty"],
+                "presence_penalty": azure_config["presence_penalty"],
+                "max_tokens_out": azure_config["max_tokens_out"]
+            }
+            
+            if not hasattr(self, 'azure_client'):
+                self.azure_client = AzureOpenAI(
+                    api_key=os.getenv("AZURE_OPENAI_ENDPOINT_KEY"),
+                    api_version=model_cfg["api_version"],
+                    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
+                )
+
+            prompt = translation_prompt_openai_1(text, self.target_language, self.style_instructions)
+            
+            response = self.azure_client.chat.completions.create(
+                model=model_cfg["engine"],
+                messages=[{"role": "user", "content": prompt}],
+                temperature=model_cfg["temperature"],
+                frequency_penalty=model_cfg["frequency_penalty"],
+                presence_penalty=model_cfg["presence_penalty"],
+                max_tokens=model_cfg["max_tokens_out"]
+            )
+            
+            return response.choices[0].message.content.strip()
+            
+        except Exception as e:
+            print(f"Error in Azure OpenAI translation: {e}")
             return text
     
     def _create_mapping_map(self, original_text_elements: set, translated_text: str, translation_map: dict) -> dict:
@@ -309,30 +374,20 @@ class SlideTranslator():
         try:
             if self.mapping_method == "OpenAI":
                 prompt = mapping_prompt_openai(original_text_elements, self.original_text, translated_text)
-                
-                response = self.mapping_client.chat.completions.create(
-                    model=self.mapping_model,
-                    messages=[
-                        {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.3,
-                    response_format={"type": "json_object"}
-                )
+                response_format={"type": "json_object"}
+                response = self.use_mapping_OpenAIclient(prompt, 0.3, response_format)
                 segment_mappings = json.loads(response.choices[0].message.content)
-
+            
+            elif self.mapping_method == "Azure OpenAI":
+                prompt = mapping_prompt_openai(original_text_elements, self.original_text, translated_text)
+                response_format={"type": "json_object"}
+                response = self.use_mapping_OpenAIclient(prompt, 0.3, response_format)
+                segment_mappings = json.loads(response.choices[0].message.content)
+                
             elif self.mapping_method == "DeepSeek":
                 prompt = mapping_prompt_deepseek(original_text_elements, self.original_text, translated_text)
-                
-                response = self.mapping_client.chat.completions.create(
-                    model=self.mapping_model,
-                    messages=[
-                        {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.3,
-                    response_format={"type": "json_object"}
-                )
+                response_format={"type": "json_object"}
+                response = self.use_mapping_OpenAIclient(prompt, 0.3, response_format)
                 segment_mappings = json.loads(response.choices[0].message.content)
                 
             elif self.mapping_method == "HuggingFace":
@@ -342,7 +397,6 @@ class SlideTranslator():
                 The output must be valid JSON with the original segments as keys and translations as values."""
                 
                 formatted_prompt = mapping_prompt_llama2(original_text_elements, self.original_text, translated_text)
-
                 payload = {"inputs": formatted_prompt}
                 response = requests.post(self.HUGGINGFACE_API_URL, headers=self.huggingface_headers, json=payload)
                 
@@ -369,37 +423,40 @@ class SlideTranslator():
                 elif self.mapping_model_type == "unknown":
                     print(f"Warning: Mapping model type not recognized: {self.mapping_model_type}")
                     return {}
-                print(f"Formatted prompt: {formatted_prompt}")
-                print(f"Mapping API URL: {self.mapping_api_url}")
-                print(f"Mapping headers: {self.mapping_headers}")
-                print(f"Mapping model: {self.mapping_model}")
-                payload = {
-                    "messages": [
-                        {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
+                
+                viaOpenAIclient = True
+                if viaOpenAIclient:
+                    response_format={"type": "json_object"}
+                    response = self.use_mapping_OpenAIclient(formatted_prompt, 0.3, response_format)
+                else:
+                    payload = {
+                        "messages": [
+                            {"role": "system", "content": "You are a professional text alignment expert, editor and translator."},
                         {"role": "user", "content": formatted_prompt}
                     ],
                     "model": self.mapping_model,
                     "temperature": 0.3
                 }
                 
-                try:
                     response = requests.post(
                         self.mapping_api_url,
                         headers=self.mapping_headers,
-                        json=payload
+                        json=payload,
+                        timeout=42
                     )
                     response.raise_for_status()
-                    
-                    response_data = response.json()
-                    content = response_data['choices'][0]['message']['content']
+                    response = response.json()
+        
+                try:
+                    content = response['choices'][0]['message']['content']
                     
                     # Find JSON content between the last [/INST] and the end
                     json_text = content.split("[/INST]")[-1].strip()
                     # Try to parse the JSON
                     segment_mappings = json.loads(json_text)
-                    
+                
                 except (json.JSONDecodeError, KeyError, IndexError, requests.RequestException) as e:
-                    print(f"Error parsing LMStudio response: {e}")
+                    print(f"Error parsing LMStudio mapping response: {e}")
                     print(f"Raw response: {response.text if 'response' in locals() else 'No response'}")
                     # Return empty mapping as fallback
                     return {}
@@ -546,3 +603,4 @@ class SlideTranslator():
                 tree.write(f, encoding='UTF-8', xml_declaration=True)
         
         return True
+

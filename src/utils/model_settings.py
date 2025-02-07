@@ -14,6 +14,7 @@ class ModelSettings:
     mapping_api_url: str = ""
     mapping_client: str = None
     translation_client: str = None
+    azure_config: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         # Force reload environment variables
@@ -21,6 +22,8 @@ class ModelSettings:
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         self.huggingface_api_key = os.getenv("HUGGINGFACE")
         self.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+        self.azure_openai_key = os.getenv("AZURE_OPENAI_ENDPOINT_KEY")
+        self.azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         self._load_gui_config()
         self._update_model_settings()
         self._setup_clients()
@@ -59,6 +62,7 @@ class ModelSettings:
                 self.translation_headers = {"Authorization": f"Bearer {self.huggingface_api_key}"}
 
             elif self.translation_method == "LMStudio":
+                self.translation_client = OpenAI(base_url="http://localhost:1234/v1")
                 self.translation_api_url = f"{self.translation_api_url.rstrip('/')}/v1/chat/completions"
                 self.translation_headers = {"Content-Type": "application/json"}
 
@@ -81,6 +85,7 @@ class ModelSettings:
                 self.mapping_headers = {"Authorization": f"Bearer {self.huggingface_api_key}"}
 
             elif self.mapping_method == "LMStudio":
+                self.mapping_client = OpenAI(base_url="http://localhost:1234/v1")
                 self.mapping_api_url = f"{self.mapping_api_url.rstrip('/')}/v1/chat/completions"
                 self.mapping_headers = {"Content-Type": "application/json"}
 
