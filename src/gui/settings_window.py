@@ -102,48 +102,10 @@ class SettingsWindow:
         # Optional: Set minimum window size
         self.root.minsize(500, 600)
         
-        # Create main container frame
-        container = ttk.Frame(self.root)
-        container.pack(fill="both", expand=True)
-        
-        # Create canvas with scrollbar
-        self.canvas = tk.Canvas(container)
-        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.canvas.yview)
-        
-        # Create main frame that will contain all widgets
-        self.main_frame = ttk.Frame(self.canvas)
-        
-        # Configure scrolling for different platforms
-        def _on_mousewheel(event):
-            if event.num == 5 or event.delta < 0:  # Scroll down
-                self.canvas.yview_scroll(1, "units")
-            elif event.num == 4 or event.delta > 0:  # Scroll up
-                self.canvas.yview_scroll(-1, "units")
-        
-        # Bind for Windows and MacOS
-        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
-        # Bind for Linux
-        self.canvas.bind_all("<Button-4>", _on_mousewheel)
-        self.canvas.bind_all("<Button-5>", _on_mousewheel)
-        
-        # Configure the canvas
-        self.main_frame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        )
-        
-        # Create window in canvas for the frame
-        self.canvas.create_window((0, 0), window=self.main_frame, anchor="nw")
-        self.canvas.configure(yscrollcommand=scrollbar.set)
-        
-        # Pack the scrollbar first, then the canvas
-        scrollbar.pack(side="right", fill="y")
-        self.canvas.pack(side="left", fill="both", expand=True)
-        
         # Load settings before creating widgets
         self.load_settings()
         
-        # Create widgets in main_frame
+        # Create widgets
         self.create_widgets()
         
         # Update idletasks to ensure proper initial layout
@@ -154,6 +116,7 @@ class SettingsWindow:
         self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
         self.huggingface_api_key = os.getenv("HUGGINGFACE", "")
         self.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
+        self.azure_api_key = os.getenv("AZURE_OPENAI_ENDPOINT_KEY", "")
 
     def clear_field(self, string_var):
         """Clear the field when it gains focus if it contains masked content"""
@@ -196,6 +159,9 @@ class SettingsWindow:
             set_key(env_path, "HUGGINGFACE", self.huggingface_key.get())
         if not self.deepseek_key.get().startswith('*'):
             set_key(env_path, "DEEPSEEK_API_KEY", self.deepseek_key.get())
+        if not self.azure_key.get().startswith('*'):
+            set_key(env_path, "AZURE_OPENAI_ENDPOINT_KEY", self.azure_key.get())
+        set_key(env_path, "AZURE_OPENAI_ENDPOINT", self.azure_endpoint.get())
         
         # Initialize variables
         translation_model = ""
@@ -300,70 +266,108 @@ class SettingsWindow:
         self.azure_mapping_endpoint = tk.StringVar(value=self.parent.mapping_api_url)
 
     def create_widgets(self):
-
-        """ VISIBILITY """
+        # Remove the existing container and canvas setup since we're using tabs
         
-        # Update visibility based on translation method
-        def update_translation_settings_visibility(*args):
-            # Hide all frames
-            for frame in [self.openai_translation_frame, self.google_translation_frame, 
-                         self.huggingface_translation_frame, self.lmstudio_translation_frame,
-                         self.deepseek_translation_frame, self.azure_translation_frame]:
-                frame.pack_forget()
+        # Create notebook for tabs - attach directly to root
+        notebook = ttk.Notebook(self.root)
+        notebook.pack(fill="both", expand=True, pady=5, padx=5)
+        
+        # Create frames for each tab
+        config_frame = ttk.Frame(notebook)
+        keys_frame = ttk.Frame(notebook)
+        
+        # Add frames to notebook with padding
+        notebook.add(config_frame, text="Config", padding=5)
+        notebook.add(keys_frame, text="API Keys", padding=5)
+        
+        # Create scrollable frame for each tab
+        config_canvas = tk.Canvas(config_frame)
+        keys_canvas = tk.Canvas(keys_frame)
+        
+        config_scrollbar = ttk.Scrollbar(config_frame, orient="vertical", command=config_canvas.yview)
+        keys_scrollbar = ttk.Scrollbar(keys_frame, orient="vertical", command=keys_canvas.yview)
+        
+        self.config_main_frame = ttk.Frame(config_canvas)
+        self.keys_main_frame = ttk.Frame(keys_canvas)
+        
+        # Configure scrolling
+        def _on_mousewheel(event, canvas):
+            if event.num == 5 or event.delta < 0:  # Scroll down
+                canvas.yview_scroll(1, "units")
+            elif event.num == 4 or event.delta > 0:  # Scroll up
+                canvas.yview_scroll(-1, "units")
+        
+        # Bind mousewheel for both canvases
+        for canvas in [config_canvas, keys_canvas]:
+            canvas.bind_all("<MouseWheel>", lambda e, c=canvas: _on_mousewheel(e, c))
+            canvas.bind_all("<Button-4>", lambda e, c=canvas: _on_mousewheel(e, c))
+            canvas.bind_all("<Button-5>", lambda e, c=canvas: _on_mousewheel(e, c))
+        
+        # Configure the canvases
+        for canvas, frame in [(config_canvas, self.config_main_frame), (keys_canvas, self.keys_main_frame)]:
+            frame.bind("<Configure>", lambda e, c=canvas: c.configure(scrollregion=c.bbox("all")))
+            canvas.create_window((0, 0), window=frame, anchor="nw")
+            canvas.configure(yscrollcommand=config_scrollbar.set)
+        
+        # Pack scrollbars and canvases with proper fill and expand
+        for frame, canvas, scrollbar in [(config_frame, config_canvas, config_scrollbar),
+                                       (keys_frame, keys_canvas, keys_scrollbar)]:
+            # Configure frame to expand
+            frame.grid_rowconfigure(0, weight=1)
+            frame.grid_columnconfigure(0, weight=1)
             
-            # Show the appropriate frame based on selected method
-            translation_method = self.translation_method.get()
-            if translation_method == "OpenAI":
-                self.openai_translation_frame.pack(fill="x", pady=5)
-            elif translation_method == "Google":
-                self.google_translation_frame.pack(fill="x", pady=5)
-            elif translation_method == "HuggingFace":
-                self.huggingface_translation_frame.pack(fill="x", pady=5)
-            elif translation_method == "LMStudio":
-                self.lmstudio_translation_frame.pack(fill="x", pady=5)
-            elif translation_method == "DeepSeek":
-                self.deepseek_translation_frame.pack(fill="x", pady=5)
-            elif translation_method == "Azure OpenAI":
-                self.azure_translation_frame.pack(fill="x", pady=5)
-
-        # Update visibility based on mapping method
-        def update_mapping_settings_visibility(*args):
-            # Hide all frames first
-            self.openai_mapping_frame.pack_forget()
-            self.lmstudio_frame.pack_forget()
-            self.huggingface_frame.pack_forget()
-            self.deepseek_mapping_frame.pack_forget()
-
-            mapping_method = self.mapping_method.get()
-            if mapping_method == "OpenAI":
-                self.openai_mapping_frame.pack(fill="x", pady=5)
-            elif mapping_method == "DeepSeek":
-                self.deepseek_mapping_frame.pack(fill="x", pady=5)
-            elif mapping_method == "LMStudio":
-                self.lmstudio_frame.pack(fill="x", pady=5)
-            elif mapping_method == "HuggingFace":
-                self.huggingface_frame.pack(fill="x", pady=5)
+            # Use grid instead of pack for better space management
+            canvas.grid(row=0, column=0, sticky="nsew")
+            scrollbar.grid(row=0, column=1, sticky="ns")
         
+        # Create the content for each tab
+        self.create_keys_tab()
+        self.create_config_tab()
         
-        ''' API KEYS '''
+        # Save Button at the bottom
+        ttk.Button(self.root, text="Save Settings", 
+                  command=self.save_settings, 
+                  style='Blue.TButton').pack(pady=(5, 10))
+
+    def create_keys_tab(self):
         # API Keys Section
-        api_frame = ttk.LabelFrame(self.main_frame, text="API Keys", padding="10")
+        api_frame = ttk.LabelFrame(self.keys_main_frame, text="API Keys", padding="10")
         api_frame.pack(fill="x", pady=5)
         
-        # OpenAI API Key with show button
+        # OpenAI API Key
         ttk.Label(api_frame, text="OpenAI API Key:").pack(anchor="w")
         key_frame = ttk.Frame(api_frame)
         key_frame.pack(fill="x", pady=2)
         self.openai_key = tk.StringVar(value="*" * 30 if self.openai_api_key else "")
         self.openai_entry = ttk.Entry(key_frame, textvariable=self.openai_key, width=50)
         self.openai_entry.pack(side="left", fill="x", expand=True)
-        self.openai_show_btn = ttk.Button(key_frame, text="Show", width=8, 
+        self.openai_show_btn = ttk.Button(key_frame, text="Show", width=8,
                                         command=lambda: self.toggle_show_key(self.openai_key, self.openai_api_key, self.openai_show_btn))
         self.openai_show_btn.pack(side="left", padx=(5, 0))
         self.openai_entry.bind('<FocusIn>', lambda e: self.clear_field(self.openai_key))
         self.openai_entry.bind('<FocusOut>', lambda e: self.mask_field(self.openai_key, self.openai_api_key))
         
-        # HuggingFace API Key with show button
+        # Azure OpenAI API Key
+        ttk.Label(api_frame, text="Azure OpenAI API Key:").pack(anchor="w")
+        key_frame = ttk.Frame(api_frame)
+        key_frame.pack(fill="x", pady=2)
+        self.azure_key = tk.StringVar(value="*" * 30 if self.azure_api_key else "")
+        self.azure_entry = ttk.Entry(key_frame, textvariable=self.azure_key, width=50)
+        self.azure_entry.pack(side="left", fill="x", expand=True)
+        self.azure_show_btn = ttk.Button(key_frame, text="Show", width=8,
+                                       command=lambda: self.toggle_show_key(self.azure_key, self.azure_api_key, self.azure_show_btn))
+        self.azure_show_btn.pack(side="left", padx=(5, 0))
+        self.azure_entry.bind('<FocusIn>', lambda e: self.clear_field(self.azure_key))
+        self.azure_entry.bind('<FocusOut>', lambda e: self.mask_field(self.azure_key, self.azure_api_key))
+        
+        # Azure OpenAI Endpoint
+        ttk.Label(api_frame, text="Azure OpenAI Endpoint:").pack(anchor="w")
+        key_frame = ttk.Frame(api_frame)
+        key_frame.pack(fill="x", pady=2)
+        self.azure_endpoint = tk.StringVar(value=os.getenv("AZURE_OPENAI_ENDPOINT", ""))
+        ttk.Entry(key_frame, textvariable=self.azure_endpoint, width=50).pack(fill="x")
+        
+        # HuggingFace API Key
         ttk.Label(api_frame, text="HuggingFace API Key:").pack(anchor="w")
         key_frame = ttk.Frame(api_frame)
         key_frame.pack(fill="x", pady=2)
@@ -376,7 +380,7 @@ class SettingsWindow:
         self.huggingface_entry.bind('<FocusIn>', lambda e: self.clear_field(self.huggingface_key))
         self.huggingface_entry.bind('<FocusOut>', lambda e: self.mask_field(self.huggingface_key, self.huggingface_api_key))
         
-        # DeepSeek API Key with show button
+        # DeepSeek API Key
         ttk.Label(api_frame, text="DeepSeek API Key:").pack(anchor="w")
         key_frame = ttk.Frame(api_frame)
         key_frame.pack(fill="x", pady=2)
@@ -384,225 +388,10 @@ class SettingsWindow:
         self.deepseek_entry = ttk.Entry(key_frame, textvariable=self.deepseek_key, width=50)
         self.deepseek_entry.pack(side="left", fill="x", expand=True)
         self.deepseek_show_btn = ttk.Button(key_frame, text="Show", width=8,
-                                command=lambda: self.toggle_show_key(self.deepseek_key, self.deepseek_api_key, self.deepseek_show_btn))
+                                          command=lambda: self.toggle_show_key(self.deepseek_key, self.deepseek_api_key, self.deepseek_show_btn))
         self.deepseek_show_btn.pack(side="left", padx=(5, 0))
         self.deepseek_entry.bind('<FocusIn>', lambda e: self.clear_field(self.deepseek_key))
         self.deepseek_entry.bind('<FocusOut>', lambda e: self.mask_field(self.deepseek_key, self.deepseek_api_key))
-
-
-        ''' TRANSLATION SETTINGS '''
-
-        # Translation Method Section
-        self.translation_frame = ttk.LabelFrame(self.main_frame, text="Translation Settings", padding="5")
-        self.translation_frame.pack(fill="x", pady=5)
-
-        ttk.Label(self.translation_frame, text="Translation Method:").pack(anchor="w")
-        for method in ["OpenAI", "Azure OpenAI", "Google", "HuggingFace", "LMStudio", "DeepSeek"]:
-            ttk.Frame(self.translation_frame).pack(anchor="w", fill="x")
-            ttk.Radiobutton(self.translation_frame, text=method, 
-                variable=self.translation_method, 
-                value=method, style='Small.TRadiobutton').pack(side="left")
-        
-        # Method-specific Translation Settings | Frame
-        self.translation_settings_frame = ttk.LabelFrame(self.main_frame, text="Method-Specific Translation Settings", 
-                                               padding="5", style='Small.TLabelframe')
-        self.translation_settings_frame.pack(fill="x", pady=5)
-
-        # OpenAI Translation Settings | Frame
-        self.openai_translation_frame = ttk.Frame(self.translation_settings_frame)
-        ttk.Label(self.openai_translation_frame, text="Model:", style='Small.TLabel').pack(side="left")
-
-        # OpenAI Translation Settings | Model
-        self.openai_translation_model_dropdown = ttk.Combobox(
-            self.openai_translation_frame, 
-            textvariable=self.openai_translation_model,
-            values=OPENAI_MODELS,
-            state="readonly",
-            width=25,
-            style='Small.TCombobox'
-        )
-        self.openai_translation_model_dropdown.pack(side="left", padx=5)
-        self.openai_translation_frame.pack(fill="x", pady=5)
-        
-        # Google Translation Settings | Frame
-        self.google_translation_frame = ttk.Frame(self.translation_settings_frame)
-        ttk.Label(self.google_translation_frame, text="No additional settings required", 
-                  style='Small.TLabel').pack(pady=5)
-        
-        # HuggingFace Translation Settings | Frame
-        self.huggingface_translation_frame = ttk.Frame(self.translation_settings_frame)
-        ttk.Label(self.huggingface_translation_frame, text="API URL:", style='Small.TLabel').pack(anchor="w")
-
-        # HuggingFace Translation Settings | API URL/ Model (The URL points directly to the model)
-        ttk.Entry(self.huggingface_translation_frame, textvariable=self.translation_huggingface_url, 
-                  width=50).pack(fill="x", pady=2)
-        
-        # LMStudio Translation Settings | Frame
-        self.lmstudio_translation_frame = ttk.Frame(self.translation_settings_frame)
-
-        # LMStudio Translation Settings | Server URL
-        ttk.Label(self.lmstudio_translation_frame, text="Server URL:", style='Small.TLabel').pack(anchor="w")
-        ttk.Entry(self.lmstudio_translation_frame, textvariable=self.translation_lmstudio_server, width=50).pack(fill="x", pady=2)
-        
-        # LMStudio Translation Settings | Model
-        ttk.Label(self.lmstudio_translation_frame, text="Model:", style='Small.TLabel').pack(anchor="w")
-        ttk.Entry(self.lmstudio_translation_frame, textvariable=self.lmstudio_translation_model, width=50).pack(fill="x", pady=2)
-
-        # DeepSeek Translation Settings | Frame
-        self.deepseek_translation_frame = ttk.Frame(self.translation_settings_frame)
-        ttk.Label(self.deepseek_translation_frame, text="Model:", style='Small.TLabel').pack(side="left")
-
-        # DeepSeek Translation Settings | Model
-        self.deepseek_translation_model_dropdown = ttk.Combobox(
-            self.deepseek_translation_frame, 
-            textvariable=self.deepseek_translation_model,
-            values=DEEPSEEK_MODELS,
-            state="readonly",
-            width=25,
-            style='Small.TCombobox'
-        )
-        self.deepseek_translation_model_dropdown.pack(side="left", padx=5)
-        self.deepseek_translation_frame.pack(fill="x", pady=5)
-
-        # Add Azure OpenAI settings frame
-        self.azure_translation_frame = ttk.Frame(self.translation_settings_frame)
-        ttk.Label(self.azure_translation_frame, text="Model:", style='Small.TLabel').pack(side="left")
-
-        self.azure_translation_model_dropdown = ttk.Combobox(
-            self.azure_translation_frame, 
-            textvariable=self.azure_translation_model,
-            values=AZURE_OPENAI_MODELS,
-            state="readonly",
-            width=25,
-            style='Small.TCombobox'
-        )
-        self.azure_translation_model_dropdown.pack(side="left", padx=5)
-
-        # Add Azure endpoint settings
-        ttk.Label(self.azure_translation_frame, text="Endpoint:", style='Small.TLabel').pack(anchor="w")
-        ttk.Entry(self.azure_translation_frame, textvariable=self.azure_endpoint, width=50).pack(fill="x", pady=2)
-
-        # Add Azure configuration frame to both translation and mapping settings
-        self.azure_translation_config_frame = self.create_azure_config_frame(self.azure_translation_frame, "translation")
-
-        # Bind the update function to translation method changes
-        self.translation_method.trace_add('write', update_translation_settings_visibility)
-        # Initial visibility check
-        update_translation_settings_visibility()
-        
-        ''' MAPPING SETTINGS '''
-        # Mapping Method Section
-        self.mapping_frame = ttk.LabelFrame(self.main_frame, text="Mapping Settings", padding="5")      
-        self.mapping_frame.pack(fill="x", pady=9)
-
-        # Mapping Method - Initialize with parent's value
-        ttk.Label(self.mapping_frame, text="Mapping Method:").pack(anchor="w")
-        for method in ["OpenAI", "Azure OpenAI", "HuggingFace", "LMStudio", "DeepSeek"]:
-            ttk.Frame(self.mapping_frame).pack(anchor="w", fill="x")
-            ttk.Radiobutton(self.mapping_frame, text=method, 
-                           variable=self.mapping_method, 
-                           value=method, 
-                           style='Small.TRadiobutton').pack(side="left")
-        
-         # Create mapping model frame
-        self.mapping_model_settings_frame = ttk.LabelFrame(self.main_frame, text="Method-Specific Mapping Settings", 
-                                                padding="5", style='Small.TLabelframe')
-        self.mapping_model_settings_frame.pack(fill="x", pady=5)
-        
-
-      
-        # LMStudio Mapping Settings | Frame
-        self.lmstudio_frame = ttk.LabelFrame(self.mapping_model_settings_frame, text="Settings for LMStudio", padding="10")
-        self.lmstudio_frame.pack(fill="x", pady=5)
-        
-        # LMStudio Mapping Settings | Local Server Address
-        ttk.Label(self.lmstudio_frame, text="Local Server Address:").pack(anchor="w")
-        ttk.Entry(self.lmstudio_frame, textvariable=self.mapping_lmstudio_server, width=50).pack(fill="x", pady=2)
-        
-        # LMStudio Mapping Settings | Model
-        ttk.Label(self.lmstudio_frame, text="Model API Identifier:").pack(anchor="w")
-        ttk.Entry(self.lmstudio_frame, textvariable=self.lmstudio_mapping_model, width=50).pack(fill="x", pady=2)
-
-        # DeepSeek Mapping Settings | Frame
-        self.deepseek_mapping_frame = ttk.Frame(self.mapping_model_settings_frame)
-        ttk.Label(self.deepseek_mapping_frame, text="Model:", style='Small.TLabel').pack(side="left")
-
-        # DeepSeek Mapping Settings | Model
-        self.deepseek_mapping_model_dropdown = ttk.Combobox(
-            self.deepseek_mapping_frame, 
-            textvariable=self.deepseek_mapping_model,
-            values=DEEPSEEK_MODELS,
-            state="readonly",
-            width=25,
-            style='Small.TCombobox'
-        )
-        self.deepseek_mapping_model_dropdown.pack(side="left", padx=5)
-        self.deepseek_mapping_frame.pack(fill="x", pady=5)
-        
-        # OpenAI Mapping Settings | Frame
-        self.openai_mapping_frame = ttk.Frame(self.mapping_model_settings_frame)
-        ttk.Label(self.openai_mapping_frame, text="Model:", style='Small.TLabel').pack(side="left")
-
-        # OpenAI Mapping Settings | Model
-        self.openai_mapping_model_dropdown = ttk.Combobox(
-            self.openai_mapping_frame, 
-            textvariable=self.openai_mapping_model,
-            values=OPENAI_MODELS,
-            state="readonly",
-            width=25,
-            style='Small.TCombobox'
-        )
-        self.openai_mapping_model_dropdown.pack(side="left", padx=5)
-        self.openai_mapping_frame.pack(fill="x", pady=5)
-
-        # HuggingFace Mapping Settings | Frame
-        self.huggingface_frame = ttk.LabelFrame(self.mapping_model_settings_frame, text="Settings for HuggingFace", 
-                                               padding="5", style='Small.TLabelframe')
-        self.huggingface_frame.pack(fill="x", pady=5)
-        
-        # HuggingFace Mapping Settings | API URL/Model (The URL points directly to the model)
-        ttk.Label(self.huggingface_frame, text="API URL:", 
-                  style='Small.TLabel').pack(anchor="w")
-        ttk.Entry(self.huggingface_frame, textvariable=self.mapping_huggingface_url, 
-                  width=50).pack(fill="x", pady=2)
-
-        # Add Azure OpenAI mapping settings frame
-        self.azure_mapping_frame = ttk.Frame(self.mapping_model_settings_frame)
-        ttk.Label(self.azure_mapping_frame, text="Model:", style='Small.TLabel').pack(side="left")
-
-        self.azure_mapping_model_dropdown = ttk.Combobox(
-            self.azure_mapping_frame, 
-            textvariable=self.azure_mapping_model,
-            values=AZURE_OPENAI_MODELS,
-            state="readonly",
-            width=25,
-            style='Small.TCombobox'
-        )
-        self.azure_mapping_model_dropdown.pack(side="left", padx=5)
-
-        # Add Azure endpoint settings for mapping
-        ttk.Label(self.azure_mapping_frame, text="Endpoint:", style='Small.TLabel').pack(anchor="w")
-        ttk.Entry(self.azure_mapping_frame, textvariable=self.azure_mapping_endpoint, width=50).pack(fill="x", pady=2)
-
-        # Add Azure configuration frame to both translation and mapping settings
-        self.azure_mapping_config_frame = self.create_azure_config_frame(self.azure_mapping_frame, "mapping")
-
-        self.mapping_method.trace_add('write', update_mapping_settings_visibility)
-        # Initial visibility check
-        update_mapping_settings_visibility()    
-        
-
-               
-        # Save Button
-        ttk.Button(self.main_frame, text="Save Settings", 
-                  command=self.save_settings, 
-                  style='Blue.TButton').pack(pady=(5, 10))
-
-        def on_closing():
-            self.canvas.unbind_all("<MouseWheel>")  # Remove mousewheel binding
-            self.root.destroy()
-        
-        self.root.protocol("WM_DELETE_WINDOW", on_closing)
 
     # Add Azure configuration frame to both translation and mapping settings
     def create_azure_config_frame(self, parent_frame, prefix):
@@ -642,3 +431,173 @@ class SettingsWindow:
         ttk.Entry(token_frame, textvariable=token_var, width=10).pack(side="left", padx=5)
         
         return config_frame
+
+    def create_config_tab(self):
+        # Translation Method Section
+        translation_frame = ttk.LabelFrame(self.config_main_frame, text="Translation Settings", padding="10")
+        translation_frame.pack(fill="x", pady=5)
+        
+        # Translation Method
+        ttk.Label(translation_frame, text="Translation Method:").pack(anchor="w")
+        self.translation_method = tk.StringVar(value=self.parent.translation_method.get())
+        translation_methods = ["OpenAI", "LMStudio", "HuggingFace", "DeepSeek", "Azure OpenAI"]
+        translation_method_menu = ttk.OptionMenu(translation_frame, self.translation_method, 
+                                               self.translation_method.get(), *translation_methods)
+        translation_method_menu.pack(fill="x", pady=2)
+        
+        # Translation Model Selection Frame
+        self.translation_model_frame = ttk.Frame(translation_frame)
+        self.translation_model_frame.pack(fill="x", pady=2)
+        
+        # OpenAI Translation Models
+        self.openai_translation_model = tk.StringVar(value=self.parent.translation_model)
+        self.openai_translation_models = ttk.Frame(self.translation_model_frame)
+        ttk.Label(self.openai_translation_models, text="OpenAI Model:").pack(side="left")
+        openai_models = ["gpt-4", "gpt-3.5-turbo"]
+        ttk.OptionMenu(self.openai_translation_models, self.openai_translation_model, 
+                      self.openai_translation_model.get(), *openai_models).pack(side="left", padx=5)
+        
+        # LMStudio Translation Settings
+        self.lmstudio_translation_model = tk.StringVar(value=self.parent.translation_model)
+        self.translation_lmstudio_server = tk.StringVar(value=self.parent.translation_api_url)
+        self.lmstudio_translation_frame = ttk.Frame(self.translation_model_frame)
+        ttk.Label(self.lmstudio_translation_frame, text="Model Name:").pack(side="left")
+        ttk.Entry(self.lmstudio_translation_frame, textvariable=self.lmstudio_translation_model).pack(side="left", padx=5)
+        ttk.Label(self.lmstudio_translation_frame, text="Server URL:").pack(side="left")
+        ttk.Entry(self.lmstudio_translation_frame, textvariable=self.translation_lmstudio_server).pack(side="left", padx=5)
+        
+        # HuggingFace Translation Settings
+        self.translation_huggingface_url = tk.StringVar(value=self.parent.translation_api_url)
+        self.huggingface_translation_frame = ttk.Frame(self.translation_model_frame)
+        ttk.Label(self.huggingface_translation_frame, text="API URL:").pack(side="left")
+        ttk.Entry(self.huggingface_translation_frame, textvariable=self.translation_huggingface_url).pack(side="left", padx=5)
+        
+        # DeepSeek Translation Models
+        self.deepseek_translation_model = tk.StringVar(value=self.parent.translation_model)
+        self.deepseek_translation_frame = ttk.Frame(self.translation_model_frame)
+        ttk.Label(self.deepseek_translation_frame, text="DeepSeek Model:").pack(side="left")
+        deepseek_models = ["deepseek-chat", "deepseek-coder"]
+        ttk.OptionMenu(self.deepseek_translation_frame, self.deepseek_translation_model, 
+                      self.deepseek_translation_model.get(), *deepseek_models).pack(side="left", padx=5)
+        
+        # Azure OpenAI Translation Settings
+        self.azure_translation_model = tk.StringVar(value=self.parent.translation_model)
+        self.azure_translation_endpoint = tk.StringVar(value=self.parent.translation_api_url)
+        self.azure_translation_frame = ttk.Frame(self.translation_model_frame)
+        ttk.Label(self.azure_translation_frame, text="Model Name:").pack(side="left")
+        ttk.Entry(self.azure_translation_frame, textvariable=self.azure_translation_model).pack(side="left", padx=5)
+        
+        # Azure Configuration Settings
+        self.translation_temperature = tk.DoubleVar(value=0.7)
+        self.translation_frequency_penalty = tk.DoubleVar(value=0.0)
+        self.translation_presence_penalty = tk.DoubleVar(value=0.0)
+        self.translation_max_tokens = tk.IntVar(value=2000)
+        
+        azure_config_frame = ttk.Frame(self.azure_translation_frame)
+        azure_config_frame.pack(fill="x", pady=2)
+        
+        ttk.Label(azure_config_frame, text="Temperature:").pack(side="left")
+        ttk.Entry(azure_config_frame, textvariable=self.translation_temperature, width=8).pack(side="left", padx=5)
+        ttk.Label(azure_config_frame, text="Freq Penalty:").pack(side="left")
+        ttk.Entry(azure_config_frame, textvariable=self.translation_frequency_penalty, width=8).pack(side="left", padx=5)
+        ttk.Label(azure_config_frame, text="Pres Penalty:").pack(side="left")
+        ttk.Entry(azure_config_frame, textvariable=self.translation_presence_penalty, width=8).pack(side="left", padx=5)
+        ttk.Label(azure_config_frame, text="Max Tokens:").pack(side="left")
+        ttk.Entry(azure_config_frame, textvariable=self.translation_max_tokens, width=8).pack(side="left", padx=5)
+        
+        # Show/hide appropriate frames based on selected method
+        self.translation_method.trace('w', self.update_translation_frames)
+        self.update_translation_frames()
+        
+        # Mapping Method Section
+        mapping_frame = ttk.LabelFrame(self.config_main_frame, text="Mapping Settings", padding="10")
+        mapping_frame.pack(fill="x", pady=5)
+        
+        # Mapping Method
+        ttk.Label(mapping_frame, text="Mapping Method:").pack(anchor="w")
+        self.mapping_method = tk.StringVar(value=self.parent.mapping_method.get())
+        mapping_methods = ["OpenAI", "LMStudio", "HuggingFace", "DeepSeek", "Azure OpenAI"]
+        mapping_method_menu = ttk.OptionMenu(mapping_frame, self.mapping_method, 
+                                           self.mapping_method.get(), *mapping_methods)
+        mapping_method_menu.pack(fill="x", pady=2)
+        
+        # Mapping Model Selection Frame
+        self.mapping_model_frame = ttk.Frame(mapping_frame)
+        self.mapping_model_frame.pack(fill="x", pady=2)
+        
+        # OpenAI Mapping Models
+        self.openai_mapping_models = ttk.Frame(self.mapping_model_frame)
+        ttk.Label(self.openai_mapping_models, text="OpenAI Model:").pack(side="left")
+        ttk.OptionMenu(self.openai_mapping_models, self.openai_mapping_model, 
+                      self.openai_mapping_model.get(), *OPENAI_MODELS).pack(side="left", padx=5)
+        
+        # LMStudio Mapping Settings
+        self.lmstudio_mapping_frame = ttk.Frame(self.mapping_model_frame)
+        ttk.Label(self.lmstudio_mapping_frame, text="Model Name:").pack(side="left")
+        ttk.Entry(self.lmstudio_mapping_frame, textvariable=self.lmstudio_mapping_model).pack(side="left", padx=5)
+        ttk.Label(self.lmstudio_mapping_frame, text="Server URL:").pack(side="left")
+        ttk.Entry(self.lmstudio_mapping_frame, textvariable=self.mapping_lmstudio_server).pack(side="left", padx=5)
+        
+        # HuggingFace Mapping Settings
+        self.huggingface_mapping_frame = ttk.Frame(self.mapping_model_frame)
+        ttk.Label(self.huggingface_mapping_frame, text="API URL:").pack(side="left")
+        ttk.Entry(self.huggingface_mapping_frame, textvariable=self.mapping_huggingface_url).pack(side="left", padx=5)
+        
+        # DeepSeek Mapping Models
+        self.deepseek_mapping_frame = ttk.Frame(self.mapping_model_frame)
+        ttk.Label(self.deepseek_mapping_frame, text="DeepSeek Model:").pack(side="left")
+        ttk.OptionMenu(self.deepseek_mapping_frame, self.deepseek_mapping_model, 
+                      self.deepseek_mapping_model.get(), *DEEPSEEK_MODELS).pack(side="left", padx=5)
+        
+        # Azure OpenAI Mapping Settings
+        self.azure_mapping_frame = ttk.Frame(self.mapping_model_frame)
+        ttk.Label(self.azure_mapping_frame, text="Model Name:").pack(side="left")
+        ttk.Entry(self.azure_mapping_frame, textvariable=self.azure_mapping_model).pack(side="left", padx=5)
+        
+        # Add Azure configuration for mapping
+        self.azure_mapping_config_frame = self.create_azure_config_frame(mapping_frame, "mapping")
+        
+        # Add trace to update visible frames based on selected method
+        self.mapping_method.trace('w', self.update_mapping_frames)
+        self.update_mapping_frames()
+
+    def update_translation_frames(self, *args):
+        # Hide all frames first
+        for frame in [self.openai_translation_models, self.lmstudio_translation_frame,
+                     self.huggingface_translation_frame, self.deepseek_translation_frame,
+                     self.azure_translation_frame]:
+            frame.pack_forget()
+        
+        # Show the appropriate frame based on selected method
+        method = self.translation_method.get()
+        if method == "OpenAI":
+            self.openai_translation_models.pack(fill="x")
+        elif method == "LMStudio":
+            self.lmstudio_translation_frame.pack(fill="x")
+        elif method == "HuggingFace":
+            self.huggingface_translation_frame.pack(fill="x")
+        elif method == "DeepSeek":
+            self.deepseek_translation_frame.pack(fill="x")
+        elif method == "Azure OpenAI":
+            self.azure_translation_frame.pack(fill="x")
+
+    def update_mapping_frames(self, *args):
+        # Hide all frames first
+        for frame in [self.openai_mapping_models, self.lmstudio_mapping_frame,
+                     self.huggingface_mapping_frame, self.deepseek_mapping_frame,
+                     self.azure_mapping_frame, self.azure_mapping_config_frame]:
+            frame.pack_forget()
+        
+        # Show the appropriate frame based on selected method
+        method = self.mapping_method.get()
+        if method == "OpenAI":
+            self.openai_mapping_models.pack(fill="x")
+        elif method == "LMStudio":
+            self.lmstudio_mapping_frame.pack(fill="x")
+        elif method == "HuggingFace":
+            self.huggingface_mapping_frame.pack(fill="x")
+        elif method == "DeepSeek":
+            self.deepseek_mapping_frame.pack(fill="x")
+        elif method == "Azure OpenAI":
+            self.azure_mapping_frame.pack(fill="x")
+            self.azure_mapping_config_frame.pack(fill="x")
