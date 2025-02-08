@@ -63,7 +63,22 @@ class PowerpointPipeline:
         self.translation_headers = model_settings.translation_headers
         self.mapping_headers = model_settings.mapping_headers
         self.style_instructions = model_settings.style_instructions
-  
+    
+
+        #load reasoning model list from reasoning_model_list.json
+        reasoning_model_list_path = os.path.join(self.root_folder, "src","utils", "reasoning_model_list.json")
+        with open(reasoning_model_list_path, "r") as f:
+            self.reasoning_model_list = json.load(f)
+
+        if self.translation_model in self.reasoning_model_list:
+            self.translation_reasoning_model = True
+        else:
+            self.translation_reasoning_model = False
+
+        if self.mapping_model in self.reasoning_model_list:
+            self.mapping_reasoning_model = True
+        else:
+            self.mapping_reasoning_model = False
 
         self.paths = PathManager(input_file=self.pptx_path) #overall msanaged paths
 

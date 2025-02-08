@@ -165,14 +165,15 @@ Input Text:
 {text}
 
 Translation Requirements:
-1. Maintain similar character length
-2. Preserve exactly:
+1. Make sure that the translation is in the actual target language and no other language or dialect.
+2. Maintain similar character length
+3. Preserve exactly:
    - All technical terms
    - Role names (e.g., DataScientist, CEO)
    - Company names (e.g., Apple, Microsoft)
    - Product names (e.g., iPhone, Windows, LegalAI)
    - Special formatting and symbols
-3. Style:
+4. Style:
    - Sharp and business-like tone
    - Concise phrasing
    - {Further_StyleInstructions}
@@ -184,6 +185,7 @@ Process:
 - Initial translation of 2-3 key phrases
 - Character count comparison
 - Style considerations
+- Make sure again that the translation is in the actual target language and no other language or dialect.
 </analysis>
 
 2. Then provide ONLY the final translation:

@@ -15,7 +15,7 @@ from utils.promts import (translation_prompt_openai_0, translation_prompt_openai
                          mapping_prompt_openai, mapping_prompt_llama2,
                          translation_prompt_deepseek_0, mapping_prompt_deepseek)
 from openai import AzureOpenAI
-
+import openai
 class TranslationResponse(BaseModel):
     translation: str
 
@@ -46,7 +46,9 @@ class SlideTranslator():
         self.find_slide_files=pipeline_settings.find_slide_files
         self.extract_paragraphs=pipeline_settings.extract_paragraphs
         self.extract_text_runs=pipeline_settings.extract_text_runs
-   
+        self.translation_reasoning_model = pipeline_settings.translation_reasoning_model
+        self.mapping_reasoning_model = pipeline_settings.mapping_reasoning_model
+
         # Load language codes mapping
         config_languages_path = os.path.join(self.root_folder, "src", "config_languages.json")
         with open(config_languages_path, "r") as f:
@@ -54,19 +56,19 @@ class SlideTranslator():
 
         # Check model type for LMStudio
         if hasattr(self, 'translation_model') and self.translation_model:
-            if re.search(r'\bllama\b', self.translation_model.lower()):
-                self.translation_model_type = "llama"
-            elif re.search(r'\bdeepseek\b', self.translation_model.lower()):
+            if re.search(r'\bdeepseek\b', self.translation_model.lower()):
                 self.translation_model_type = "deepseek"
+            elif re.search(r'\bllama\b', self.translation_model.lower()):
+                self.translation_model_type = "llama"
             else:
                 self.translation_model_type = "unknown"
 
         # Check model type for LMStudio
         if hasattr(self, 'mapping_model') and self.mapping_model:
-            if re.search(r'\bllama\b', self.mapping_model.lower()):
-                self.mapping_model_type = "llama"
-            elif re.search(r'\bdeepseek\b', self.translation_model.lower()):
+            if re.search(r'\bdeepseek\b', self.mapping_model.lower()):
                 self.mapping_model_type = "deepseek"
+            elif re.search(r'\bllama\b', self.mapping_model.lower()):
+                self.mapping_model_type = "llama"
             else:
                 self.mapping_model_type = "unknown"
 
@@ -134,14 +136,15 @@ class SlideTranslator():
 
     def use_translation_OpenAIclient(self, prompt: str, temperature: float, response_format: str) -> str:
         try:
-            response = self.translation_client.chat.completions.create(
+            #openai.api_base = self.translation_api_url
+            client=self.translation_client
+            response = client.chat.completions.create(
                 model=self.translation_model,
                     messages=[
                         {"role": "system", "content": "You are a professional translator."},
                         {"role": "user", "content": prompt}
                     ],
                     temperature=temperature,
-                    response_format=response_format
                 )
             return response
         
@@ -157,7 +160,6 @@ class SlideTranslator():
                         {"role": "user", "content": prompt}
                     ],
                     temperature=temperature,
-                    response_format=response_format
                 )
             return response
         
@@ -187,12 +189,16 @@ class SlideTranslator():
             
             if chosen_prompt==1:
                 content = response.choices[0].message.content.strip()
-                # Extract text between <translation> tags
-                translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
+                if self.reasoning_model:
+                    # First remove any <think>...</think> content, then search for translation
+                    content_without_think = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+                    translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content_without_think, re.DOTALL)
+                else:
+                    translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
                 if translation_match:
                     if self.verbose:
                         print(f"\tTranslation match: {translation_match.group(1).strip()}")
-                    return translation_match.group(1).strip()
+                return translation_match.group(1).strip()
 
         except Exception as e:
             print(f"Response.strip() error: {e} for text: {text} with result {response.choices[0].message.content}")
@@ -240,8 +246,9 @@ class SlideTranslator():
 
         try:
             content = response.choices[0].message.content.strip()
-            # Extract text between <translation> tags
-            translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
+            # First remove any <think>...</think> content, then search for translation
+            content_without_think = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+            translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content_without_think, re.DOTALL)
             if translation_match:
                 if self.verbose:
                     print(f"\tTranslation match: {translation_match.group(1).strip()}")
@@ -266,7 +273,9 @@ class SlideTranslator():
             response_text = response.json()[0]["generated_text"]
             # Find JSON content between the last [/INST] and the end
             content = response_text.split("[/INST]")[-1].strip()
-            translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
+            # First remove any <think>...</think> content, then search for translation
+            content_without_think = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+            translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content_without_think, re.DOTALL)
             if translation_match:
                 if self.verbose:
                     print(f"\tTranslation match: {translation_match.group(1).strip()}")
@@ -312,11 +321,14 @@ class SlideTranslator():
             response.raise_for_status()
             response = response.json()
         try:
-
-            content = response['choices'][0]['message']['content']
-            
-            # Extract text between <translation> tags
-            translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
+            #content = response['choices'][0]['message']['content']
+            content = response.choices[0].message.content
+            # First remove any <think>...</think> content, then search for translation
+            if self.translation_reasoning_model:
+                content_without_think = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+                translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content_without_think, re.DOTALL)
+            else:
+                translation_match = re.search(r'<translation>\s*(.*?)\s*</translation>', content, re.DOTALL)
             if translation_match:
                 if self.verbose:
                     print(f"\tTranslation match: {translation_match.group(1).strip()}")
@@ -405,8 +417,10 @@ class SlideTranslator():
                     response_text = response.json()[0]["generated_text"]
                     # Find JSON content between the last [/INST] and the end
                     json_text = response_text.split("[/INST]")[-1].strip()
+                    # First remove any <think>...</think> content, then search for translation
+                    json_text_without_think = re.sub(r'<think>.*?</think>', '', json_text, flags=re.DOTALL)
                     # Try to parse the JSON
-                    segment_mappings = json.loads(json_text)
+                    segment_mappings = json.loads(json_text_without_think)
                     
                 except (json.JSONDecodeError, KeyError, IndexError) as e:
                     print(f"Error parsing Hugging Face response: {e}")
@@ -448,10 +462,15 @@ class SlideTranslator():
                     response = response.json()
         
                 try:
-                    content = response['choices'][0]['message']['content']
-                    
-                    # Find JSON content between the last [/INST] and the end
-                    json_text = content.split("[/INST]")[-1].strip()
+                    #content = response['choices'][0]['message']['content']
+                    content = response.choices[0].message.content
+                    if self.mapping_reasoning_model:
+                        # First remove any <think>...</think> content, then search for translation
+                        content_without_think = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+                        # Find JSON content between the last [/INST] and the end
+                        json_text = content_without_think.split("[/INST]")[-1].strip()
+                    else:
+                        json_text = content.split("[/INST]")[-1].strip()
                     # Try to parse the JSON
                     segment_mappings = json.loads(json_text)
                 
