@@ -14,6 +14,8 @@ job-ci:
   # defaults
   # - machine type: saas-linux-small-amd64
   # - region: us-east1
+
+
   rules:
   - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   stage: test
@@ -21,6 +23,10 @@ job-ci:
   script:
   # add default binary location for pipx-installed apps
   # - `pipx ensurepath` only takes effect in new shell
+
+  - poetry --version
+  - poetry lock --check || poetry lock --no-update
+  - poetry install --no-root
   - export PATH=/root/.local/bin:$PATH
 
   - ./scripts/ci/print_system.sh
