@@ -8,17 +8,27 @@ def test_check_rate_limits_no_api_key():
     with patch.dict(os.environ, {}, clear=True):
         check_rate_limits()  # Should handle missing API key gracefully
 
-def test_main_parser():
-    """Test argument parser in main"""
+def test_main_testing_mode():
+    """Test main function in testing mode"""
     with patch('argparse.ArgumentParser.parse_args') as mock_args:
-        # Test --check-limits flag
         mock_args.return_value = MagicMock(
-            check_limits=True,
-            testing=False,
+            testing=True,
             input=None,
             language='German'
         )
         main()  # Should run without errors
+
+def test_main_gui_mode():
+    """Test main function in GUI mode"""
+    with patch('argparse.ArgumentParser.parse_args') as mock_args:
+        mock_args.return_value = MagicMock(
+            testing=False,
+            input=None,
+            language='German'
+        )
+        with patch('tkinter.Tk'):
+            with patch('slidemob.gui.main_gui.SlideMobGUI'):
+                main()  # Should run without errors
 
 def test_path_manager():
     """Test PathManager initialization"""
