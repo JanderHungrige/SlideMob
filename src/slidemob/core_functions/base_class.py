@@ -11,30 +11,34 @@ from ..utils.model_settings import ModelSettings
 
 
 class PowerpointPipeline:
-    def __init__(self, 
-                 verbose: bool=False,
-                 extract_namespaces: bool=False,
-                 namespaces: dict={'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
-                                   'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
-                                   'p': 'http://schemas.openxmlformats.org/presentationml/2006/main',
-                                   'p14':"http://schemas.microsoft.com/office/powerpoint/2010/main",
-                                   'a16':"http://schemas.microsoft.com/office/drawing/2014/main",
-                                   'mc':"http://schemas.openxmlformats.org/markup-compatibility/2006",
-                                   'v':"urn:schemas-microsoft-com:vml"
-                                   },
-                 ):
-    
-        self.verbose=verbose
-        self.extract_namespaces=extract_namespaces
-        self.namespaces=namespaces
+    def __init__(
+        self,
+        verbose: bool = False,
+        extract_namespaces: bool = False,
+        namespaces: dict = {
+            "a": "http://schemas.openxmlformats.org/drawingml/2006/main",
+            "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+            "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
+            "p14": "http://schemas.microsoft.com/office/powerpoint/2010/main",
+            "a16": "http://schemas.microsoft.com/office/drawing/2014/main",
+            "mc": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+            "v": "urn:schemas-microsoft-com:vml",
+        },
+    ):
+
+        self.verbose = verbose
+        self.extract_namespaces = extract_namespaces
+        self.namespaces = namespaces
         self.get_config()
-        
+
     def get_config(self):
         # Load config file
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "config.json"
+        )
         with open(config_path, "r") as f:
             self.config = json.load(f)
-        
+
         self.root_folder = self.config["root_folder"]
         self.pptx_folder = self.config["pptx_folder"]
         self.pptx_path = self.config["pptx_name"]
@@ -44,14 +48,14 @@ class PowerpointPipeline:
         self.target_language = self.config["target_language"]
 
         self.extract_namespaces = self.extract_namespaces
-        self.namespaces = self.namespaces 
+        self.namespaces = self.namespaces
         # Initialize model settings
         model_settings = ModelSettings()
         # Load GUI config
         self.reduce_slides = model_settings.reduce_slides
         self.update_language = model_settings.update_language
         self.fresh_extract = model_settings.fresh_extract
-     
+
         # Copy relevant attributes from model settings
         self.translation_client = model_settings.translation_client
         self.mapping_client = model_settings.mapping_client
@@ -64,10 +68,13 @@ class PowerpointPipeline:
         self.translation_headers = model_settings.translation_headers
         self.mapping_headers = model_settings.mapping_headers
         self.style_instructions = model_settings.style_instructions
-    
 
-        #load reasoning model list from reasoning_model_list.json
-        reasoning_model_list_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "utils", "reasoning_model_list.json")
+        # load reasoning model list from reasoning_model_list.json
+        reasoning_model_list_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "utils",
+            "reasoning_model_list.json",
+        )
         with open(reasoning_model_list_path, "r") as f:
             self.reasoning_model_list = json.load(f)
 
@@ -81,29 +88,31 @@ class PowerpointPipeline:
         else:
             self.mapping_reasoning_model = False
 
-        self.paths = PathManager(input_file=self.pptx_path) #overall msanaged paths
+        self.paths = PathManager(input_file=self.pptx_path)  # overall msanaged paths
 
-        if self.verbose: print(f"\tPPTX path: {self.pptx_path}")
-        if self.verbose: print(f"\tExtract path: {self.extract_path}")
-        if self.verbose: print(f"\tOutput folder: {self.output_folder}")
-        
+        if self.verbose:
+            print(f"\tPPTX path: {self.pptx_path}")
+        if self.verbose:
+            print(f"\tExtract path: {self.extract_path}")
+        if self.verbose:
+            print(f"\tOutput folder: {self.output_folder}")
+
     def find_slide_files(self) -> List[str]:
         """Find all slide XML files in the folder structure."""
         slide_files = []
         for root, _, files in os.walk(self.extract_path):
             for file in files:
-                if file.startswith('slide') and file.endswith('.xml'):
+                if file.startswith("slide") and file.endswith(".xml"):
                     number_part = file[5:-4]
                     if number_part.isdigit():
                         slide_files.append(os.path.join(root, file))
         return sorted(slide_files)
-        
 
     def extract_paragraphs(self, xml_file: str) -> List[ET.Element]:
         """Extract everything inparagraphs from the XML file."""
         tree = ET.parse(xml_file)
         root = tree.getroot()
-        return root.findall('.//a:p', self.namespaces)
+        return root.findall(".//a:p", self.namespaces)
 
     def extract_text_runs(self, xml_file: str) -> Tuple[List[ET.Element], set]:
         """Extract text elements that need translation."""
@@ -111,39 +120,42 @@ class PowerpointPipeline:
         root = tree.getroot()
         text_elements = []
         original_text_elements = set()
-  
-        # Create a backup with the original text elements
-        for paragraph in root.findall('.//a:p', self.namespaces):
-            for run in paragraph.findall('.//a:r', self.namespaces):
-                run_props = run.find('.//a:rPr', self.namespaces)
-                lang = run_props.get('lang') if run_props is not None else 'en-GB' 
 
-                for original_text_element in run.findall('.//a:t', self.namespaces):
-                    if original_text_element.text and original_text_element.text.strip():
+        # Create a backup with the original text elements
+        for paragraph in root.findall(".//a:p", self.namespaces):
+            for run in paragraph.findall(".//a:r", self.namespaces):
+                run_props = run.find(".//a:rPr", self.namespaces)
+                lang = run_props.get("lang") if run_props is not None else "en-GB"
+
+                for original_text_element in run.findall(".//a:t", self.namespaces):
+                    if (
+                        original_text_element.text
+                        and original_text_element.text.strip()
+                    ):
                         original_text_elements.add(original_text_element.text.strip())
 
         # Process paragraphs while preserving structure
-        for paragraph in root.findall('.//a:p', self.namespaces):
+        for paragraph in root.findall(".//a:p", self.namespaces):
             text_parts = []
             lang = None
-            for text_element in paragraph.findall('.//a:t', self.namespaces):
-                run_props = text_element.find('.//a:rPr', self.namespaces)
+            for text_element in paragraph.findall(".//a:t", self.namespaces):
+                run_props = text_element.find(".//a:rPr", self.namespaces)
                 if run_props is not None:
-                    lang = run_props.get('lang', 'en-GB')
+                    lang = run_props.get("lang", "en-GB")
                 if text_element.text and text_element.text.strip():
                     text_parts.append(text_element.text.strip())
-            
+
             if text_parts:
-                text_element = ET.Element('a:t')
-                text_element.text = ' '.join(text_parts)
-                text_element.set('lang', lang or 'en-GB')
+                text_element = ET.Element("a:t")
+                text_element.text = " ".join(text_parts)
+                text_element.set("lang", lang or "en-GB")
                 text_elements.append(text_element)
 
         print("Text elements found:")
         for element in text_elements:
-            print(f"- {element.text.strip()} | lang: {element.get('lang')}")     
+            print(f"- {element.text.strip()} | lang: {element.get('lang')}")
         return text_elements, original_text_elements
-    
+
     def extract_pptx(self) -> str:
         """Extract a PPTX file into its XML components."""
         os.makedirs(self.extract_path, exist_ok=True)
@@ -156,11 +168,12 @@ class PowerpointPipeline:
                     os.unlink(item_path)
                 elif os.path.isdir(item_path):
                     import shutil
+
                     shutil.rmtree(item_path)
-        
-        with zipfile.ZipFile(self.pptx_path, 'r') as pptx:
+
+        with zipfile.ZipFile(self.pptx_path, "r") as pptx:
             pptx.extractall(self.extract_path)
-        
+
         # Get namespaces right after extraction
         if self.extract_namespaces:
             self.namespaces = self.get_namespace()
@@ -168,41 +181,41 @@ class PowerpointPipeline:
 
     def get_namespace(self) -> dict:
         """Get the namespaces from the first slide XML using text processing."""
-        slide_path = os.path.join(self.extract_path, 'ppt/slides/slide1.xml')
-        
+        slide_path = os.path.join(self.extract_path, "ppt/slides/slide1.xml")
+
         try:
-            with open(slide_path, 'r', encoding='utf-8') as file:
+            with open(slide_path, "r", encoding="utf-8") as file:
                 content = file.read()
-                
+
             # Find the root element opening tag
-            start_idx = content.find('<p:sld')
-            end_idx = content.find('>', start_idx)
+            start_idx = content.find("<p:sld")
+            end_idx = content.find(">", start_idx)
             if start_idx == -1 or end_idx == -1:
                 print("Could not find root element")
                 return {}
-            
+
             # Extract the root element declaration
             root_declaration = content[start_idx:end_idx]
-            
+
             # Find all xmlns declarations
             namespaces = {}
             import re
-            
+
             # Pattern to match xmlns:prefix="uri" or xmlns="uri"
             pattern = r'xmlns(?::([^=]+))?="([^"]+)"'
             matches = re.finditer(pattern, root_declaration)
-            
+
             for match in matches:
                 prefix = match.group(1)  # This might be None for default namespace
                 uri = match.group(2)
                 if prefix:
                     namespaces[prefix] = uri
                 else:
-                    namespaces['default'] = uri
-            
+                    namespaces["default"] = uri
+
             print("\tExtracted namespaces:", namespaces)
             return namespaces
-            
+
         except Exception as e:
             print(f"\tError extracting namespaces: {e}")
             return {}
@@ -213,7 +226,9 @@ class PowerpointPipeline:
 
         os.makedirs(os.path.dirname(self.output_pptx), exist_ok=True)
         try:
-            with zipfile.ZipFile(output_pptx, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+            with zipfile.ZipFile(
+                output_pptx, "w", compression=zipfile.ZIP_DEFLATED
+            ) as zf:
                 for root, _, files in os.walk(source_path):
                     for file in files:
                         file_path = os.path.join(root, file)

@@ -6,8 +6,9 @@ from ..utils.path_manager import PathManager
 from .run_merger_pipeline import PowerPointRunMerger
 import traceback
 
+
 class TestPipeline(PowerpointPipeline):
-    def __init__(self, path_manager: PathManager, verbose: bool=False):
+    def __init__(self, path_manager: PathManager, verbose: bool = False):
         super().__init__()
 
         # Initialize components

@@ -57,6 +57,7 @@ It's OK for this section to be quite long.
 
 After completing your analysis, provide the final translation within <translation> tags. Remember, your output should contain only the pure translation, without any additional text or explanations."""
 
+
 def translation_prompt_llama2_0(text, target_language, Further_StyleInstructions):
     return f"""
 [INST] You are a professional translator tasked with accurately translating text while adhering to specific guidelines. Your goal is to provide a high-quality translation that meets all the given requirements.
@@ -101,6 +102,7 @@ It's OK for this section to be quite long.
 After completing your analysis, provide the final translation within <translation> tags. Remember, your output should contain only the pure translation, without any additional text or explanations. 
 [/INST]"""
 
+
 def translation_prompt_llama2_1(text, target_language, Further_StyleInstructions):
     return f"""[INST] You are a precise translator. Translate the following text to {target_language}.
 
@@ -127,6 +129,7 @@ Format your response as:
 </translation>
 [/INST]"""
 
+
 def mapping_prompt_openai(original_segments, original_text, translated_text):
     return f"""Match each original text segment with its corresponding part from the translation.
     Original segments: {[text for text in original_segments]}
@@ -136,11 +139,12 @@ def mapping_prompt_openai(original_segments, original_text, translated_text):
     Return a JSON object where keys are the original segments and values are their corresponding translations.
     Only include segments that appear in the original text."""
 
+
 def mapping_prompt_llama2(original_segments, original_text, translated_text):
     system_prompt = """You are a professional text alignment expert, editor and translator.
     Your task is to return a JSON object mapping original text segments to their translations.
     The output must be valid JSON with the original segments as keys and translations as values."""
-    
+
     return f"""<s>[INST] <<SYS>>
     {system_prompt}
     <</SYS>>
@@ -157,6 +161,7 @@ def mapping_prompt_llama2(original_segments, original_text, translated_text):
         "original_text_1": "translated_text_1",
         "original_text_2": "translated_text_2"
     }}[/INST]"""
+
 
 def translation_prompt_deepseek_0(text, target_language, Further_StyleInstructions):
     return f"""You are an expert translator specializing in precise, technical translations. Translate the following text to {target_language}.
@@ -194,6 +199,7 @@ Process:
 </translation>
 
 Critical: Return ONLY the content within the <translation> tags as your final output."""
+
 
 def mapping_prompt_deepseek(original_segments, original_text, translated_text):
     return f"""You are a text alignment specialist. Map each original segment to its corresponding translation.
