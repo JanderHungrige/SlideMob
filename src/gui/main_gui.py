@@ -251,13 +251,20 @@ class SlideMobGUI(PowerpointPipeline):
         translation_frame = ttk.Frame(options_frame)
         translation_frame.pack(fill="x", pady=5)
         
-        # Language selection row
-        language_row = ttk.Frame(translation_frame)
-        language_row.pack(fill="x", pady=(0, 5))
+        # Language Settings Frame
+        language_frame = ttk.LabelFrame(self.scrollable_frame, text="Language Settings", padding=10)
+        language_frame.pack(fill="x", padx=10, pady=5)
+        
+        language_row = ttk.Frame(language_frame)
+        language_row.pack(fill="x", pady=5)
         
         ttk.Label(language_row, text="Target Language:").pack(side="left")
-        language_dropdown = ttk.Combobox(language_row, textvariable=self.gui_target_language, values=self.language_options)
+        language_dropdown = ttk.Combobox(language_row, textvariable=self.gui_target_language, 
+                                       values=self.language_options)
         language_dropdown.pack(side="left", padx=5)
+        
+        # Add trace to save language when changed
+        self.gui_target_language.trace('w', lambda *args: self.save_gui_config())
         
         # Methods row
         methods_row = ttk.Frame(translation_frame)
@@ -315,7 +322,8 @@ class SlideMobGUI(PowerpointPipeline):
         )
         if filename:
             self.gui_pptx_path.set(filename)
-            
+            self.save_gui_config()
+
     def browse_output(self):
         if self.gui_pptx_path.get():
             startfolder = os.path.dirname(self.gui_pptx_path.get())
@@ -324,7 +332,8 @@ class SlideMobGUI(PowerpointPipeline):
         folder = filedialog.askdirectory(title="Select Output Folder", initialdir=startfolder)
         if folder:
             self.gui_output_path.set(folder)
-            
+            self.save_gui_config()
+
     def update_translation_progress(self, slide_name, current, total):
         """Update the status text with current translation progress"""
         self.status_var.set(f"Translating slide {current} of {total} ({slide_name})")
@@ -465,29 +474,40 @@ class SlideMobGUI(PowerpointPipeline):
         except Exception as e:
             logging.warning(f"Could not load GUI config: {str(e)}")
 
-    def save_gui_config(self):
-        """Save current GUI configuration to config file"""
+    def save_gui_config(self, save_all=False):
+        """Save GUI configuration to config file"""
         try:
-            config = {
-                'extract_pptx': self.extract_var.get(),
-                'pre_merge': self.merge_runs_var.get(),
-                'polish_content': self.polish_var.get(),
-                'translate_content': self.translate_var.get(),
-                'update_language': self.update_language.get(),
-                'reduce_slides': self.reduce_slides.get(),
-                'target_language': self.gui_target_language.get(),
-                'translation_method': self.translation_method.get(),
-                'mapping_method': self.mapping_method.get(),
-                'style_instructions': self.gui_style_instructions.get(),
-                'pptx_path': self.gui_pptx_path.get(),
-                'output_folder': self.gui_output_path.get(),
-                'translation_model': self.translation_model,
-                'mapping_model': self.mapping_model,
-                'translation_api_url': self.translation_api_url,
-                'mapping_api_url': self.mapping_api_url
-            }
-            
+            # Always load existing config first
             config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_gui.json")
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            
+            if save_all:
+                # Save all settings when called from settings window
+                config.update({
+                    'extract_pptx': self.extract_var.get(),
+                    'pre_merge': self.merge_runs_var.get(),
+                    'polish_content': self.polish_var.get(),
+                    'translate_content': self.translate_var.get(),
+                    'update_language': self.update_language.get(),
+                    'reduce_slides': self.reduce_slides.get(),
+                    'target_language': self.gui_target_language.get(),
+                    'translation_method': self.translation_method.get(),
+                    'mapping_method': self.mapping_method.get(),
+                    'style_instructions': self.gui_style_instructions.get(),
+                    'translation_model': self.translation_model,
+                    'mapping_model': self.mapping_model,
+                    'translation_api_url': self.translation_api_url,
+                    'mapping_api_url': self.mapping_api_url
+                })
+            else:
+                # Only save path-related settings
+                config.update({
+                    'pptx_path': self.gui_pptx_path.get(),
+                    'output_folder': self.gui_output_path.get(),
+                    'target_language': self.gui_target_language.get()
+                })
+            
             with open(config_path, 'w') as f:
                 json.dump(config, f, indent=4)
         except Exception as e:

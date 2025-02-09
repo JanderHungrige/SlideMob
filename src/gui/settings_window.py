@@ -226,8 +226,8 @@ class SettingsWindow:
         # Update parent's config
         self.parent.update_config(config)
         
-        # Save GUI settings
-        self.parent.save_gui_config()
+        # Save all GUI settings
+        self.parent.save_gui_config(save_all=True)
         
         messagebox.showinfo("Success", "Settings saved successfully!")
         self.root.destroy()

@@ -14,5 +14,7 @@
     "translation_model": "deepseek-r1-distill-llama-8b",
     "mapping_model": "deepseek-r1-distill-llama-8b",
     "translation_api_url": "http://127.0.0.1:1234",
-    "mapping_api_url": "http://127.0.0.1:1234"
+    "mapping_api_url": "http://127.0.0.1:1234",
+    "azure_translation_config": null,
+    "azure_mapping_config": null
 }
