@@ -12,7 +12,7 @@ packages = [{ include = "slidemob", from = "src" }]
 
 [tool.poetry.dependencies]
 python = ">=3.11"
-tk = "*"
+tk = "^0.1.0"
 ttkthemes = "^2.4.0"
 pillow = "^10.2.0"
 customtkinter = "^5.2.2"
@@ -136,4 +136,3 @@ slidemob = "slidemob.__main__:main"
 
 [project.scripts]
 slidemob = "slidemob.__main__:main"
-xs
