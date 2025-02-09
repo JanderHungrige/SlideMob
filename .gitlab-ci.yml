@@ -22,6 +22,7 @@ job-ci:
   image: python:3.11-slim
 
   before_script:
+  - apt-get update && apt-get install -y python3-tk tk libx11-6 libxft2 libxrender1 libfontconfig1 libxext6
   - pip install --upgrade pip
   - pip install poetry
   - export PATH=$HOME/.local/bin:$PATH
