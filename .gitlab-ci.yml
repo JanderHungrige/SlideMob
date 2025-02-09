@@ -22,18 +22,15 @@ job-ci:
   image: python:3.11-slim
 
   before_script:
-  - apt update && apt install -y pipx
-  - pipx install poetry
+  - pip install --upgrade pip
+  - pip install poetry
   - export PATH=$HOME/.local/bin:$PATH
   - poetry --version
 
   script:
-  # add default binary location for pipx-installed apps
-  # - `pipx ensurepath` only takes effect in new shell
-  - poetry --version
-  - poetry lock --check || poetry lock --no-update
-  - poetry install --no-root
-  - export PATH=/root/.local/bin:$PATH
+  - poetry lock --dry-run || poetry lock
+  - poetry install
+  - poetry run pytest
 
   - ./scripts/ci/print_system.sh
   - ./scripts/ci/install_pipx_debian.sh
