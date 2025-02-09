@@ -22,6 +22,8 @@ class SlideMobGUI(PowerpointPipeline):
         tk.Tk.report_callback_exception = self.show_error
         self.root.title("SlideMob PowerPoint Processor")
         self.root.geometry("700x790")
+
+                # Now load config to override defaults
         
         # Initialize variables with default values
         self.translation_model = "gpt-4"
@@ -47,9 +49,9 @@ class SlideMobGUI(PowerpointPipeline):
         self.reduce_slides = tk.BooleanVar(value=False)
         self.merge_runs_var = tk.BooleanVar(value=False)
         
-        # Now load config to override defaults
+
         self.load_gui_config()
-        
+
         # Update the display text initially
         self._update_translation_display()
         self._update_mapping_display()
@@ -131,8 +133,6 @@ class SlideMobGUI(PowerpointPipeline):
 
 • Update PPTX Language: Updates PowerPoint's internal language settings to match the target language."""
         }
-
-        self.translation_method = tk.StringVar(value="OpenAI")
 
         self.processing = False
         self.stop_requested = False
