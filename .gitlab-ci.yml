@@ -20,10 +20,16 @@ job-ci:
   - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   stage: test
   image: python:3.11-slim
+
+  before_script:
+  - apt update && apt install -y pipx
+  - pipx install poetry
+  - export PATH=$HOME/.local/bin:$PATH
+  - poetry --version
+
   script:
   # add default binary location for pipx-installed apps
   # - `pipx ensurepath` only takes effect in new shell
-
   - poetry --version
   - poetry lock --check || poetry lock --no-update
   - poetry install --no-root
