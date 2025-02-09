@@ -11,7 +11,7 @@ class TestPipeline(PowerpointPipeline):
         super().__init__()
 
         # Initialize components
-        self.translator = PowerPointTranslator(target_language=self.target_language, Further_StyleInstructions="None", update_language=False, fresh_extract=True, verbose=verbose)
+        self.translator = PowerPointTranslator()
         self.polisher = PowerPointPolisher()
         self.verbose = verbose
         self.paths = path_manager
