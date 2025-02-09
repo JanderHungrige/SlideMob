@@ -1,9 +1,9 @@
 from pathlib import Path
-from core_functions.base_class import PowerpointPipeline
-from pipelines.translator_pipeline import PowerPointTranslator
-from pipelines.polisher_pipeline import PowerPointPolisher
-from utils.path_manager import PathManager
-from pipelines.run_merger_pipeline import PowerPointRunMerger
+from ..core_functions.base_class import PowerpointPipeline
+from .translator_pipeline import PowerPointTranslator
+from .polisher_pipeline import PowerPointPolisher
+from ..utils.path_manager import PathManager
+from .run_merger_pipeline import PowerPointRunMerger
 import traceback
 
 class TestPipeline(PowerpointPipeline):

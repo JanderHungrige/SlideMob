@@ -10,7 +10,7 @@ from .base_class import PowerpointPipeline
 import os
 import re
 import traceback
-from utils.promts import (translation_prompt_openai_0, translation_prompt_openai_1, 
+from ..utils.promts import (translation_prompt_openai_0, translation_prompt_openai_1, 
                          translation_prompt_llama2_0, translation_prompt_llama2_1,
                          mapping_prompt_openai, mapping_prompt_llama2,
                          translation_prompt_deepseek_0, mapping_prompt_deepseek)

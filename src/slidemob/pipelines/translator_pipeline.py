@@ -1,11 +1,9 @@
-from core_functions.base_class import PowerpointPipeline
-from core_functions.translator import SlideTranslator
-from utils.path_manager import PathManager
+from ..core_functions.base_class import PowerpointPipeline
+from ..core_functions.translator import SlideTranslator
+from ..utils.path_manager import PathManager
 import os
 import traceback
 from typing import Optional
-
-from core_functions.base_class import PowerpointPipeline
 
 class PowerPointTranslator():
     def __init__(self, progress_callback, stop_check_callback):

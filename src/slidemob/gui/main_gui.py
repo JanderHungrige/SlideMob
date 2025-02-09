@@ -6,14 +6,14 @@ import logging
 from ttkthemes import ThemedStyle  
 import traceback
 
-from core_functions.base_class import PowerpointPipeline
-from pipelines.translator_pipeline import PowerPointTranslator
-from pipelines.polisher_pipeline import PowerPointPolisher
-from utils.errorhandler import setup_error_logging
-from utils.config import create_config
-from utils.path_manager import PathManager
-from pipelines.run_merger_pipeline import PowerPointRunMerger
-from gui.settings_window import SettingsWindow
+from ..core_functions.base_class import PowerpointPipeline
+from ..pipelines.translator_pipeline import PowerPointTranslator
+from ..pipelines.polisher_pipeline import PowerPointPolisher
+from ..utils.errorhandler import setup_error_logging
+from ..utils.config import create_config
+from ..utils.path_manager import PathManager
+from ..pipelines.run_merger_pipeline import PowerPointRunMerger
+from .settings_window import SettingsWindow
 
 class SlideMobGUI(PowerpointPipeline):
     def __init__(self, root):

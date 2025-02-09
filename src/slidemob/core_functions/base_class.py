@@ -4,10 +4,10 @@ import dotenv
 from openai import OpenAI
 from typing import List, Tuple
 import xml.etree.ElementTree as ET
-from utils.path_manager import PathManager, get_initial_config_path
+from ..utils.path_manager import PathManager, get_initial_config_path
 import zipfile
 import traceback
-from utils.model_settings import ModelSettings
+from ..utils.model_settings import ModelSettings
 
 
 class PowerpointPipeline:
