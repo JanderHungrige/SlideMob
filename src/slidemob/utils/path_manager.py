@@ -1,7 +1,7 @@
 import os
 
 def get_initial_config_path() -> str:
-    return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "src/config.json")
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config.json")
 
 class PathManager:
     def __init__(self, input_file: str, output_file: str=None):
@@ -24,7 +24,7 @@ class PathManager:
             self.output_pptx=os.path.join(self.output_dir, f"translated_{os.path.basename(input_file)}")
 
     def get_config_path(self) -> str:
-        return os.path.join(self.project_root, "src/config.json")
+        return os.path.join(self.project_root, "config.json")
         
     def get_output_pptx_path(self, filename: str) -> str:
         return os.path.join(self.output_dir, f"translated_{filename}")

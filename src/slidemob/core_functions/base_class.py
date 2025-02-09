@@ -31,7 +31,8 @@ class PowerpointPipeline:
         
     def get_config(self):
         # Load config file
-        with open(get_initial_config_path(), "r") as f:
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
+        with open(config_path, "r") as f:
             self.config = json.load(f)
         
         self.root_folder = self.config["root_folder"]
@@ -66,7 +67,7 @@ class PowerpointPipeline:
     
 
         #load reasoning model list from reasoning_model_list.json
-        reasoning_model_list_path = os.path.join(self.root_folder, "src","utils", "reasoning_model_list.json")
+        reasoning_model_list_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "utils", "reasoning_model_list.json")
         with open(reasoning_model_list_path, "r") as f:
             self.reasoning_model_list = json.load(f)
 

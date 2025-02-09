@@ -50,7 +50,7 @@ class SlideTranslator():
         self.mapping_reasoning_model = pipeline_settings.mapping_reasoning_model
 
         # Load language codes mapping
-        config_languages_path = os.path.join(self.root_folder, "src", "config_languages.json")
+        config_languages_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_languages.json")
         with open(config_languages_path, "r") as f:
             self.language_codes = json.load(f)
 

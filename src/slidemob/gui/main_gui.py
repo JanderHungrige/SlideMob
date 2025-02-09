@@ -63,7 +63,8 @@ class SlideMobGUI(PowerpointPipeline):
         self.gui_output_path.trace_add("write", self._update_output_path)
         
         # Load language codes first
-        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_languages.json")) as f:
+        config_languages_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_languages.json")
+        with open(config_languages_path) as f:
             language_config = json.load(f)
         self.language_options = [lang["language"].split(" (")[0] for lang in language_config["languages"]]
         
