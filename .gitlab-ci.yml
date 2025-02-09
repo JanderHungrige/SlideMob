@@ -17,7 +17,7 @@ job-ci:
   rules:
   - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   stage: test
-  image: python:3.12-slim
+  image: python:3.11-slim
   script:
   # add default binary location for pipx-installed apps
   # - `pipx ensurepath` only takes effect in new shell
