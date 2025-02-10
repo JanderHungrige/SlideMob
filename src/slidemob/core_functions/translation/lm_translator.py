@@ -1,8 +1,8 @@
-from typing import Optional
-from .base import BaseTranslator
-import json
 import re
-from utils.promts import translation_prompt_llama2_0, translation_prompt_deepseek_0
+
+from utils.promts import translation_prompt_deepseek_0, translation_prompt_llama2_0
+
+from .base import BaseTranslator
 
 
 class LMStudioTranslator(BaseTranslator):

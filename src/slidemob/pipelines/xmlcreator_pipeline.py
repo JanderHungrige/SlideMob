@@ -1,5 +1,6 @@
-from ..core_functions.base_class import PowerpointPipeline
 import traceback
+
+from ..core_functions.base_class import PowerpointPipeline
 
 
 class XMLcreator(PowerpointPipeline):

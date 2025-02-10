@@ -1,8 +1,10 @@
-import pytest
-from slidemob.main import check_rate_limits, main
 import os
-from unittest.mock import patch, MagicMock
 import tkinter as tk
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from slidemob.main import check_rate_limits, main
 
 
 def test_check_rate_limits_no_api_key():

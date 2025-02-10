@@ -1,10 +1,8 @@
 import logging
-from typing import Optional
-import os
 
 
 class TranslationLogger:
-    def __init__(self, log_file: Optional[str] = None):
+    def __init__(self, log_file: str | None = None):
         self.logger = logging.getLogger("translation")
         self.logger.setLevel(logging.INFO)
 

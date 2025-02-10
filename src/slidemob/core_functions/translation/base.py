@@ -1,14 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class BaseTranslator(ABC):
     def __init__(
         self,
         model: str,
-        api_url: Optional[str] = None,
-        client: Optional[any] = None,
-        headers: Optional[dict] = None,
+        api_url: str | None = None,
+        client: any | None = None,
+        headers: dict | None = None,
     ):
         self.model = model
         self.api_url = api_url
@@ -27,9 +26,9 @@ class BaseMapper(ABC):
     def __init__(
         self,
         model: str,
-        api_url: Optional[str] = None,
-        client: Optional[any] = None,
-        headers: Optional[dict] = None,
+        api_url: str | None = None,
+        client: any | None = None,
+        headers: dict | None = None,
     ):
         self.model = model
         self.api_url = api_url

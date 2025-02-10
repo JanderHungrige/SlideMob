@@ -1,7 +1,9 @@
-from lxml import etree as ET
-from .base_class import PowerpointPipeline
 import os
 import traceback
+
+from lxml import etree as ET
+
+from .base_class import PowerpointPipeline
 
 
 class RunMerger:

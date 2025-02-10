@@ -1,8 +1,9 @@
-from typing import Optional
-from .base import BaseMapper
 import json
 import re
-from utils.promts import mapping_prompt_llama2, mapping_prompt_deepseek
+
+from utils.promts import mapping_prompt_deepseek, mapping_prompt_llama2
+
+from .base import BaseMapper
 
 
 class LMStudioMapper(BaseMapper):

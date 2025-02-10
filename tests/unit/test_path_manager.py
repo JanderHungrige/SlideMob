@@ -1,5 +1,5 @@
 import os
-import pytest
+
 from slidemob.utils.path_manager import PathManager
 
 

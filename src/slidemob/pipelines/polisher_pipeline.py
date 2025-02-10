@@ -1,8 +1,8 @@
 ## Pipeline - Polisher
+import traceback
+
 from ..core_functions.base_class import PowerpointPipeline
 from ..core_functions.polisher import SlidePolisher
-import traceback
-import os
 
 
 class PowerPointPolisher(PowerpointPipeline):

@@ -1,10 +1,10 @@
-from pathlib import Path
-from ..core_functions.base_class import PowerpointPipeline
-from .translator_pipeline import PowerPointTranslator
-from .polisher_pipeline import PowerPointPolisher
-from ..utils.path_manager import PathManager
-from .run_merger_pipeline import PowerPointRunMerger
 import traceback
+
+from ..core_functions.base_class import PowerpointPipeline
+from ..utils.path_manager import PathManager
+from .polisher_pipeline import PowerPointPolisher
+from .run_merger_pipeline import PowerPointRunMerger
+from .translator_pipeline import PowerPointTranslator
 
 
 class TestPipeline(PowerpointPipeline):
@@ -44,7 +44,7 @@ class TestPipeline(PowerpointPipeline):
             return success
 
         except Exception as e:
-            print(f"Error in pipeline: {str(e)}")
+            print(f"Error in pipeline: {e!s}")
             print("Full traceback:")
             print(traceback.format_exc())
             return False

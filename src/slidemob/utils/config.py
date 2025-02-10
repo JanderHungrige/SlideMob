@@ -1,5 +1,6 @@
-from .path_manager import PathManager
 import json
+
+from .path_manager import PathManager
 
 
 def create_config(path_manager: PathManager, target_language: str = "English"):

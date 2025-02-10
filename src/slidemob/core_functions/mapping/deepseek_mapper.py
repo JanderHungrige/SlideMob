@@ -1,8 +1,9 @@
-from typing import Optional
-from .base import BaseMapper
 import json
 import re
+
 from utils.promts import mapping_prompt_deepseek
+
+from .base import BaseMapper
 
 
 class DeepSeekMapper(BaseMapper):

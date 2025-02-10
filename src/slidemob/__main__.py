@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Entry point for the slidemob package."""
-import tkinter as tk
-import os
 import argparse
+import os
+import tkinter as tk
+
+from openai import OpenAI
+
 from slidemob.gui.main_gui import SlideMobGUI
 from slidemob.pipelines.test_pipeline import TestPipeline
 from slidemob.utils.config import create_config
 from slidemob.utils.path_manager import PathManager
-from slidemob.pipelines.run_merger_pipeline import PowerPointRunMerger
-from openai import OpenAI
 
 
 def check_rate_limits():
@@ -58,7 +59,7 @@ def main():
             else:
                 print("Translation failed!")
         except Exception as e:
-            print(f"Error in pipeline: {str(e)}")
+            print(f"Error in pipeline: {e!s}")
     else:
         root = tk.Tk()
         app = SlideMobGUI(root)

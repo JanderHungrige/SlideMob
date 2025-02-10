@@ -1,7 +1,8 @@
-from typing import Optional
-from .base import BaseTranslator
-from googletrans import Translator
 import asyncio
+
+from googletrans import Translator
+
+from .base import BaseTranslator
 
 
 class GoogleTranslator(BaseTranslator):

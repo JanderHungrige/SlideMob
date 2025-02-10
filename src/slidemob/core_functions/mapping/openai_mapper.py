@@ -1,7 +1,8 @@
-from typing import Optional
-from .base import BaseMapper
-from utils.promts import mapping_prompt_openai
 import json
+
+from utils.promts import mapping_prompt_openai
+
+from .base import BaseMapper
 
 
 class OpenAIMapper(BaseMapper):

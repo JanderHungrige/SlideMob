@@ -1,8 +1,8 @@
-import sys
-import traceback
 from datetime import datetime
 import os
 from pathlib import Path
+import sys
+import traceback
 
 
 def setup_error_logging():

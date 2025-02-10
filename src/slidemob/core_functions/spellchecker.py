@@ -1,7 +1,9 @@
-from .base_class import PowerpointPipeline
-import xml.etree.ElementTree as ET
 import re
+import xml.etree.ElementTree as ET
+
 from spellchecker import SpellChecker
+
+from .base_class import PowerpointPipeline
 
 
 class SlideSpellChecker(PowerpointPipeline):
@@ -78,7 +80,7 @@ class SlideSpellChecker(PowerpointPipeline):
         corrected_words = []
 
         for word in words:
-            if not self.spell.correction(word) == word:
+            if self.spell.correction(word) != word:
                 corrected_words.append(self.spell.correction(word))
             else:
                 corrected_words.append(word)

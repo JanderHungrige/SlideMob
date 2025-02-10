@@ -1,27 +1,27 @@
-from lxml import etree as ET
-import requests
-from googletrans import Translator
 import asyncio
-from pydantic import BaseModel
 import json
-from langdetect import detect
-from typing import List, Optional
-from .base_class import PowerpointPipeline
 import os
 import re
 import traceback
+
+from googletrans import Translator
+from langdetect import detect
+from lxml import etree as ET
+from openai import AzureOpenAI
+from pydantic import BaseModel
+import requests
+
 from ..utils.promts import (
-    translation_prompt_openai_0,
-    translation_prompt_openai_1,
+    mapping_prompt_deepseek,
+    mapping_prompt_llama2,
+    mapping_prompt_openai,
+    translation_prompt_deepseek_0,
     translation_prompt_llama2_0,
     translation_prompt_llama2_1,
-    mapping_prompt_openai,
-    mapping_prompt_llama2,
-    translation_prompt_deepseek_0,
-    mapping_prompt_deepseek,
+    translation_prompt_openai_0,
+    translation_prompt_openai_1,
 )
-from openai import AzureOpenAI
-import openai
+from .base_class import PowerpointPipeline
 
 
 class TranslationResponse(BaseModel):
@@ -31,7 +31,7 @@ class TranslationResponse(BaseModel):
 class SlideTranslator:
     def __init__(
         self,
-        pipeline_settings: Optional[PowerpointPipeline] = None,
+        pipeline_settings: PowerpointPipeline | None = None,
         verbose: bool = False,
     ):
 
@@ -65,7 +65,7 @@ class SlideTranslator:
         config_languages_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "config_languages.json"
         )
-        with open(config_languages_path, "r") as f:
+        with open(config_languages_path) as f:
             self.language_codes = json.load(f)
 
         # Check model type for LMStudio
@@ -87,7 +87,7 @@ class SlideTranslator:
                 self.mapping_model_type = "unknown"
 
     def create_translation_map(
-        self, text_elements: List[ET.Element], original_text_elements: set
+        self, text_elements: list[ET.Element], original_text_elements: set
     ) -> dict:
         """Create a mapping between original text and their translations."""
         translation_map = {text: "" for text in original_text_elements}
@@ -203,7 +203,6 @@ class SlideTranslator:
         # result = self.analyze_text(text)
         # if result == "not_translatable":
         #     return text  # Return original text without translation
-
         """Translate text while preserving approximate length and formatting."""
         chosen_prompt = 1
         prompt_0 = translation_prompt_openai_0(
@@ -289,7 +288,6 @@ class SlideTranslator:
         # result = self.analyze_text(text)
         # if result == "not_translatable":
         #     return text  # Return original text without translation
-
         """Translate text while preserving approximate length and formatting."""
         prompt_0 = translation_prompt_deepseek_0(
             text, self.target_language, self.style_instructions
@@ -364,7 +362,6 @@ class SlideTranslator:
 
     def translate_text_lmstudio(self, text: str) -> str:
         """Translate text using local LMStudio server."""
-
         if self.translation_model_type == "llama":
             prompt_0 = translation_prompt_llama2_0(
                 text, self.target_language, self.style_instructions
@@ -475,17 +472,8 @@ class SlideTranslator:
         self, original_text_elements: set, translated_text: str, translation_map: dict
     ) -> dict:
         """Create a mapping between original text and their translations."""
-
         try:
-            if self.mapping_method == "OpenAI":
-                prompt = mapping_prompt_openai(
-                    original_text_elements, self.original_text, translated_text
-                )
-                response_format = {"type": "json_object"}
-                response = self.use_mapping_OpenAIclient(prompt, 0.3, response_format)
-                segment_mappings = json.loads(response.choices[0].message.content)
-
-            elif self.mapping_method == "Azure OpenAI":
+            if self.mapping_method == "OpenAI" or self.mapping_method == "Azure OpenAI":
                 prompt = mapping_prompt_openai(
                     original_text_elements, self.original_text, translated_text
                 )

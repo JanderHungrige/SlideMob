@@ -1,10 +1,11 @@
-from .base_class import PowerpointPipeline
-from pydantic import BaseModel
-import xml.etree.ElementTree as ET
 import json
-from typing import List
 import os
 import traceback
+import xml.etree.ElementTree as ET
+
+from pydantic import BaseModel
+
+from .base_class import PowerpointPipeline
 
 
 class PolishResponse(BaseModel):
@@ -41,7 +42,7 @@ class SlidePolisher(PowerpointPipeline):
         {text}
         """
 
-        pydentic_prompt_addition = f"Respond with a JSON object containing only a 'polished_text' field with the polished version of this text"
+        pydentic_prompt_addition = "Respond with a JSON object containing only a 'polished_text' field with the polished version of this text"
 
         if self.model == "gpt-4":  # non pydentic model
             try:
@@ -124,7 +125,7 @@ class SlidePolisher(PowerpointPipeline):
                 return text
 
     def create_maping(
-        self, text_elements: List[ET.Element], original_text_elements: set
+        self, text_elements: list[ET.Element], original_text_elements: set
     ) -> dict:
         """Create a mapping between original text and their translations."""
         polish_mapping = {text: "" for text in original_text_elements}

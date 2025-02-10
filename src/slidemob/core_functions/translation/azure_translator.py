@@ -1,8 +1,8 @@
-from typing import Optional
-from .base import BaseTranslator
-import json
 import re
+
 from utils.promts import translation_prompt_openai_1
+
+from .base import BaseTranslator
 
 
 class AzureTranslator(BaseTranslator):
@@ -11,7 +11,7 @@ class AzureTranslator(BaseTranslator):
         model: str,
         client: any,
         reasoning_model: bool = False,
-        config: Optional[dict] = None,
+        config: dict | None = None,
     ):
         super().__init__(model=model, client=client)
         self.reasoning_model = reasoning_model

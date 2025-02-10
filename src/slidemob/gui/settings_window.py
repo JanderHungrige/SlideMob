@@ -1,9 +1,9 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
 import os
-import json
-from dotenv import load_dotenv, set_key
 from pathlib import Path
+import tkinter as tk
+from tkinter import messagebox, ttk
+
+from dotenv import load_dotenv, set_key
 
 # OpenAI models list
 OPENAI_MODELS = [

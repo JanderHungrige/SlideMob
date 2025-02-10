@@ -1,7 +1,6 @@
-from typing import Dict, Optional
+from datetime import datetime, timedelta
 import json
 import os
-from datetime import datetime, timedelta
 
 
 class TranslationCache:
@@ -10,10 +9,10 @@ class TranslationCache:
         self.ttl = timedelta(days=ttl_days)
         self.cache = self._load_cache()
 
-    def _load_cache(self) -> Dict:
+    def _load_cache(self) -> dict:
         if os.path.exists(self.cache_file):
             try:
-                with open(self.cache_file, "r") as f:
+                with open(self.cache_file) as f:
                     return json.load(f)
             except Exception:
                 return {}
@@ -23,7 +22,7 @@ class TranslationCache:
         with open(self.cache_file, "w") as f:
             json.dump(self.cache, f)
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> str | None:
         if key in self.cache:
             timestamp = datetime.fromisoformat(self.cache[key]["timestamp"])
             if datetime.now() - timestamp < self.ttl:

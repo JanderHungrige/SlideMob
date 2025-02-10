@@ -1,13 +1,11 @@
-import os
 import json
-import dotenv
-from openai import OpenAI
-from typing import List, Tuple
-import xml.etree.ElementTree as ET
-from ..utils.path_manager import PathManager, get_initial_config_path
-import zipfile
+import os
 import traceback
+import xml.etree.ElementTree as ET
+import zipfile
+
 from ..utils.model_settings import ModelSettings
+from ..utils.path_manager import PathManager
 
 
 class PowerpointPipeline:
@@ -36,7 +34,7 @@ class PowerpointPipeline:
         config_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "config.json"
         )
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             self.config = json.load(f)
 
         self.root_folder = self.config["root_folder"]
@@ -75,7 +73,7 @@ class PowerpointPipeline:
             "utils",
             "reasoning_model_list.json",
         )
-        with open(reasoning_model_list_path, "r") as f:
+        with open(reasoning_model_list_path) as f:
             self.reasoning_model_list = json.load(f)
 
         if self.translation_model in self.reasoning_model_list:
@@ -97,7 +95,7 @@ class PowerpointPipeline:
         if self.verbose:
             print(f"\tOutput folder: {self.output_folder}")
 
-    def find_slide_files(self) -> List[str]:
+    def find_slide_files(self) -> list[str]:
         """Find all slide XML files in the folder structure."""
         slide_files = []
         for root, _, files in os.walk(self.extract_path):
@@ -108,13 +106,13 @@ class PowerpointPipeline:
                         slide_files.append(os.path.join(root, file))
         return sorted(slide_files)
 
-    def extract_paragraphs(self, xml_file: str) -> List[ET.Element]:
+    def extract_paragraphs(self, xml_file: str) -> list[ET.Element]:
         """Extract everything inparagraphs from the XML file."""
         tree = ET.parse(xml_file)
         root = tree.getroot()
         return root.findall(".//a:p", self.namespaces)
 
-    def extract_text_runs(self, xml_file: str) -> Tuple[List[ET.Element], set]:
+    def extract_text_runs(self, xml_file: str) -> tuple[list[ET.Element], set]:
         """Extract text elements that need translation."""
         tree = ET.parse(xml_file)
         root = tree.getroot()
@@ -184,7 +182,7 @@ class PowerpointPipeline:
         slide_path = os.path.join(self.extract_path, "ppt/slides/slide1.xml")
 
         try:
-            with open(slide_path, "r", encoding="utf-8") as file:
+            with open(slide_path, encoding="utf-8") as file:
                 content = file.read()
 
             # Find the root element opening tag

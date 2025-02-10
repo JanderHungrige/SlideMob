@@ -1,11 +1,11 @@
-from typing import Optional
-from .base import BaseTranslator
-from .openai_translator import OpenAITranslator
-from .google_translator import GoogleTranslator
+
 from .azure_translator import AzureTranslator
+from .base import BaseTranslator
+from .deepseek_translator import DeepSeekTranslator
+from .google_translator import GoogleTranslator
 from .hf_translator import HuggingFaceTranslator
 from .lm_translator import LMStudioTranslator
-from .deepseek_translator import DeepSeekTranslator
+from .openai_translator import OpenAITranslator
 
 # Import other translators...
 
@@ -15,12 +15,12 @@ class TranslatorFactory:
     def create_translator(
         method: str,
         model: str,
-        client: Optional[any] = None,
-        api_url: Optional[str] = None,
-        headers: Optional[dict] = None,
+        client: any | None = None,
+        api_url: str | None = None,
+        headers: dict | None = None,
         reasoning_model: bool = False,
         model_type: str = "unknown",
-        config: Optional[dict] = None,
+        config: dict | None = None,
     ) -> BaseTranslator:
         if method == "OpenAI":
             return OpenAITranslator(

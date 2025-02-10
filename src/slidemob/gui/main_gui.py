@@ -1,18 +1,19 @@
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
 import json
-import os
 import logging
-from ttkthemes import ThemedStyle
+import os
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
 import traceback
 
+from ttkthemes import ThemedStyle
+
 from ..core_functions.base_class import PowerpointPipeline
-from ..pipelines.translator_pipeline import PowerPointTranslator
 from ..pipelines.polisher_pipeline import PowerPointPolisher
-from ..utils.errorhandler import setup_error_logging
-from ..utils.config import create_config
-from ..utils.path_manager import PathManager
 from ..pipelines.run_merger_pipeline import PowerPointRunMerger
+from ..pipelines.translator_pipeline import PowerPointTranslator
+from ..utils.config import create_config
+from ..utils.errorhandler import setup_error_logging
+from ..utils.path_manager import PathManager
 from .settings_window import SettingsWindow
 
 
@@ -521,10 +522,10 @@ class SlideMobGUI(PowerpointPipeline):
             )
 
         except Exception as e:
-            self.status_var.set(f"Error occurred: {str(e)}")
+            self.status_var.set(f"Error occurred: {e!s}")
             messagebox.showerror(
                 "Error",
-                f"An error occurred: {str(e)}\nCheck error_logs folder for details.",
+                f"An error occurred: {e!s}\nCheck error_logs folder for details.",
             )
             logging.exception("Error in process_presentation")
             raise e
@@ -539,7 +540,7 @@ class SlideMobGUI(PowerpointPipeline):
                 os.path.dirname(os.path.dirname(__file__)), "config_gui.json"
             )
             if os.path.exists(config_path):
-                with open(config_path, "r") as f:
+                with open(config_path) as f:
                     config = json.load(f)
 
                 self.translation_model = config.get("translation_model", "gpt-4")
@@ -570,7 +571,7 @@ class SlideMobGUI(PowerpointPipeline):
                     self.gui_output_path.set(config.get("output_folder"))
 
         except Exception as e:
-            logging.warning(f"Could not load GUI config: {str(e)}")
+            logging.warning(f"Could not load GUI config: {e!s}")
 
     def save_gui_config(self, save_all=False):
         """Save GUI configuration to config file"""
@@ -579,7 +580,7 @@ class SlideMobGUI(PowerpointPipeline):
             config_path = os.path.join(
                 os.path.dirname(os.path.dirname(__file__)), "config_gui.json"
             )
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 config = json.load(f)
 
             if save_all:
@@ -615,7 +616,7 @@ class SlideMobGUI(PowerpointPipeline):
             with open(config_path, "w") as f:
                 json.dump(config, f, indent=4)
         except Exception as e:
-            logging.warning(f"Could not save GUI config: {str(e)}")
+            logging.warning(f"Could not save GUI config: {e!s}")
 
     def open_settings(self):
         """Open the settings window"""
@@ -649,7 +650,7 @@ class SlideMobGUI(PowerpointPipeline):
             config_path = os.path.join(
                 os.path.dirname(os.path.dirname(__file__)), "config_gui.json"
             )
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 config = json.load(f)
 
             # Update config with new values

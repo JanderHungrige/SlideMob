@@ -1,7 +1,8 @@
 import re
-from typing import Optional
+
+from utils.promts import translation_prompt_openai_1
+
 from .base import BaseTranslator
-from utils.promts import translation_prompt_openai_0, translation_prompt_openai_1
 
 
 class OpenAITranslator(BaseTranslator):

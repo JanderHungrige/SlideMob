@@ -1,22 +1,23 @@
-import os
-import json
-from openai import OpenAI
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+import json
+import os
+from typing import Any
+
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 
 
 @dataclass
 class ModelSettings:
-    translation_headers: Dict[str, str] = field(default_factory=dict)
-    mapping_headers: Dict[str, str] = field(default_factory=dict)
+    translation_headers: dict[str, str] = field(default_factory=dict)
+    mapping_headers: dict[str, str] = field(default_factory=dict)
     translation_api_url: str = ""
     mapping_api_url: str = ""
     mapping_client: str = None
     translation_client: str = None
-    azure_config: Dict[str, Any] = field(default_factory=dict)
+    azure_config: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         # Force reload environment variables
@@ -52,7 +53,7 @@ class ModelSettings:
         self._setup_translation_client()
         self._setup_mapping_client()
 
-    def _setup_translation_client(self) -> Optional[Any]:
+    def _setup_translation_client(self) -> Any | None:
         """Setup and return translation client based on configuration"""
         try:
             if self.translation_method == "OpenAI":
@@ -83,7 +84,7 @@ class ModelSettings:
             print(f"model_settings.py: Error setting up translation client: {e}")
             return None
 
-    def _setup_mapping_client(self) -> Optional[Any]:
+    def _setup_mapping_client(self) -> Any | None:
         """Setup and return mapping client based on configuration"""
         try:
             if self.mapping_method == "OpenAI":
@@ -117,7 +118,7 @@ class ModelSettings:
             config_path = os.path.join(
                 os.path.dirname(os.path.dirname(__file__)), "config_gui.json"
             )
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 self.gui_config = json.load(f)
         except Exception as e:
             print(f"Error loading GUI config: {e}")

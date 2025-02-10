@@ -1,8 +1,9 @@
-from typing import Optional
-from .base import BaseMapper
 import json
 import re
+
 from utils.promts import mapping_prompt_openai
+
+from .base import BaseMapper
 
 
 class AzureMapper(BaseMapper):
@@ -11,7 +12,7 @@ class AzureMapper(BaseMapper):
         model: str,
         client: any,
         reasoning_model: bool = False,
-        config: Optional[dict] = None,
+        config: dict | None = None,
     ):
         super().__init__(model=model, client=client)
         self.reasoning_model = reasoning_model

@@ -1,8 +1,7 @@
-from typing import Optional
-from .base import BaseTranslator
+
 import requests
-import json
-import re
+
+from .base import BaseTranslator
 
 
 class HuggingFaceTranslator(BaseTranslator):
