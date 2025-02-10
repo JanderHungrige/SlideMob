@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from slidemob.main import check_rate_limits, main
+from slidemob.__main__ import check_rate_limits, main
 
 
 def test_check_rate_limits_no_api_key():
