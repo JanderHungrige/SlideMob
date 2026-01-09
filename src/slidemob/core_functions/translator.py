@@ -267,8 +267,11 @@ class SlideTranslator:
                 return translation_match.group(1).strip()
 
         except Exception as e:
+            content_preview = "No response"
+            if 'response' in locals() and response and hasattr(response, 'choices') and response.choices:
+                content_preview = response.choices[0].message.content
             print(
-                f"Response.strip() error: {e} for text: {text} with result {response.choices[0].message.content}"
+                f"Response.strip() error: {e} for text: {text} with result {content_preview}"
             )
             print("Full traceback:")
             print(traceback.format_exc())
@@ -340,8 +343,11 @@ class SlideTranslator:
                 return translation_match.group(1).strip()
 
         except Exception as e:
+            content_preview = "No response"
+            if 'response' in locals() and response and hasattr(response, 'choices') and response.choices:
+                content_preview = response.choices[0].message.content
             print(
-                f"Response.strip() error: {e} for text: {text} with result {response.choices[0].message.content}"
+                f"Response.strip() error: {e} for text: {text} with result {content_preview}"
             )
             print("Full traceback:")
             print(traceback.format_exc())
@@ -490,6 +496,9 @@ class SlideTranslator:
                 presence_penalty=model_cfg["presence_penalty"],
                 max_tokens=model_cfg["max_tokens_out"],
             )
+
+            if not response:
+                return text
 
             return response.choices[0].message.content.strip()
 
@@ -649,7 +658,7 @@ class SlideTranslator:
                 ) as e:
                     print(f"Error parsing LMStudio mapping response: {e}")
                     print(
-                        f"Raw response: {response.text if 'response' in locals() else 'No response'}"
+                        f"Raw response: {getattr(response, 'text', 'No response attribute') if response else 'No response'}"
                     )
                     # Return empty mapping as fallback
                     return {}
@@ -682,6 +691,12 @@ class SlideTranslator:
         try:
             # Use OpenAI or similar client to translate
             response = self.use_translation_OpenAIclient(prompt, 0.7, "text")
+            
+            if not response:
+                if self.verbose:
+                    print(f"\tWarning: No response from translation service for paragraph")
+                return
+
             translated_marked_text = response.choices[0].message.content.strip()
             
             # Extract content from <translation> tags if present

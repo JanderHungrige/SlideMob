@@ -78,9 +78,12 @@ class ModelSettings:
                 }
 
             elif self.translation_method == "LMStudio":
-                self.translation_client = OpenAI(base_url="http://localhost:1234/v1")
+                base_url = self.translation_api_url
+                if not base_url.endswith("/v1") and "/v1/" not in base_url:
+                    base_url = f"{base_url.rstrip('/')}/v1"
+                self.translation_client = OpenAI(base_url=base_url, api_key="lm-studio")
                 self.translation_api_url = (
-                    f"{self.translation_api_url.rstrip('/')}/v1/chat/completions"
+                    f"{base_url.rstrip('/')}/chat/completions"
                 )
                 self.translation_headers = {"Content-Type": "application/json"}
 
@@ -106,9 +109,12 @@ class ModelSettings:
                 }
 
             elif self.mapping_method == "LMStudio":
-                self.mapping_client = OpenAI(base_url="http://localhost:1234/v1")
+                base_url = self.mapping_api_url
+                if not base_url.endswith("/v1") and "/v1/" not in base_url:
+                    base_url = f"{base_url.rstrip('/')}/v1"
+                self.mapping_client = OpenAI(base_url=base_url, api_key="lm-studio")
                 self.mapping_api_url = (
-                    f"{self.mapping_api_url.rstrip('/')}/v1/chat/completions"
+                    f"{base_url.rstrip('/')}/chat/completions"
                 )
                 self.mapping_headers = {"Content-Type": "application/json"}
 
