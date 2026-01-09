@@ -53,12 +53,16 @@ SlideMob offers two distinct translation strategies selectable in the Settings:
 - Classic: The standard method that process text segments individually. It is reliable for most standard layouts.
 - Marker-based: A specialized method that uses temporary markers to handle complex slides with mixed formatting and nested styles more effectively.
 
-## Building the Executable
-
 You can package SlideMob into a standalone executable for macOS or Windows using the provided build script:
 
+**macOS:**
 ```bash
 poetry run python scripts/build_executable.py --platform mac
+```
+
+**Windows:**
+```bash
+poetry run python scripts/build_executable.py --platform win
 ```
 
 The resulting application will be located in the `dist/` folder.
