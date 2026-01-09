@@ -130,9 +130,20 @@ class SlideTranslator:
                     if self.verbose:
                         print(f"\tOriginal paragraph: {self.original_text}")
                         print(f"\tTranslated paragraph: {translated_text}\n")
+                    
+                    # Filter candidates to only those that appear in the current paragraph
+                    # This reduces context noise and hallucinations
+                    local_candidates = {
+                        t for t in original_text_elements 
+                        if t in self.original_text
+                    }
+                    
+                    if not local_candidates:
+                         # Fallback if strict substring check fails (unlikely if extract matches)
+                         local_candidates = original_text_elements
 
                     translation_map = self._create_mapping_map(
-                        original_text_elements, translated_text, translation_map
+                        local_candidates, translated_text, translation_map
                     )
         return translation_map
 
@@ -468,6 +479,26 @@ class SlideTranslator:
             print(f"Error in Azure OpenAI translation: {e}")
             return text
 
+    def _parse_json_response(self, content: str) -> dict:
+        """Helper to robustly parse JSON from LLM response."""
+        try:
+            # Remove markdown code blocks
+            content = re.sub(r"```json\s*", "", content, flags=re.IGNORECASE)
+            content = re.sub(r"```\s*$", "", content, flags=re.IGNORECASE)
+            content = content.strip()
+            
+            # If content contains text before/after JSON, extract the JSON object
+            match = re.search(r"(\{.*\})", content, re.DOTALL)
+            if match:
+                content = match.group(1)
+            
+            return json.loads(content)
+        except Exception as e:
+            print(f"Error parsing JSON: {e}")
+            print(f"Content was: {content}")
+            return {}
+
+
     def _create_mapping_map(
         self, original_text_elements: set, translated_text: str, translation_map: dict
     ) -> dict:
@@ -479,7 +510,7 @@ class SlideTranslator:
                 )
                 response_format = {"type": "json_object"}
                 response = self.use_mapping_OpenAIclient(prompt, 0.3, response_format)
-                segment_mappings = json.loads(response.choices[0].message.content)
+                segment_mappings = self._parse_json_response(response.choices[0].message.content)
 
             elif self.mapping_method == "DeepSeek":
                 prompt = mapping_prompt_deepseek(
@@ -487,7 +518,7 @@ class SlideTranslator:
                 )
                 response_format = {"type": "json_object"}
                 response = self.use_mapping_OpenAIclient(prompt, 0.3, response_format)
-                segment_mappings = json.loads(response.choices[0].message.content)
+                segment_mappings = self._parse_json_response(response.choices[0].message.content)
 
             elif self.mapping_method == "HuggingFace":
                 # Use existing HuggingFace implementation
@@ -514,8 +545,7 @@ class SlideTranslator:
                     json_text_without_think = re.sub(
                         r"<think>.*?</think>", "", json_text, flags=re.DOTALL
                     )
-                    # Try to parse the JSON
-                    segment_mappings = json.loads(json_text_without_think)
+                    segment_mappings = self._parse_json_response(json_text_without_think)
 
                 except (json.JSONDecodeError, KeyError, IndexError) as e:
                     print(f"Error parsing Hugging Face response: {e}")
@@ -580,7 +610,7 @@ class SlideTranslator:
                     else:
                         json_text = content.split("[/INST]")[-1].strip()
                     # Try to parse the JSON
-                    segment_mappings = json.loads(json_text)
+                    segment_mappings = self._parse_json_response(json_text)
 
                 except (
                     json.JSONDecodeError,
