@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from dotenv import load_dotenv, set_key
+from ..utils.path_manager import get_user_env_path
 
 # OpenAI models list
 OPENAI_MODELS = [
@@ -116,7 +117,7 @@ class SettingsWindow:
         self.root.update_idletasks()
 
     def load_env_variables(self):
-        load_dotenv()
+        load_dotenv(get_user_env_path())
         self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
         self.huggingface_api_key = os.getenv("HUGGINGFACE", "")
         self.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
@@ -153,8 +154,10 @@ class SettingsWindow:
 
     def save_settings(self):
         # Create .env file if it doesn't exist
-        env_path = Path(".env")
-        env_path.touch(exist_ok=True)
+        env_path = get_user_env_path()
+        if not os.path.exists(env_path):
+            with open(env_path, 'w') as f:
+                pass
 
         # Save API keys if changed
         if not self.openai_key.get().startswith("*"):

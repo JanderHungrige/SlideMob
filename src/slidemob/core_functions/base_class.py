@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 from ..utils.model_settings import ModelSettings
-from ..utils.path_manager import PathManager
+from ..utils.path_manager import PathManager, get_resource_path
 
 
 class PowerpointPipeline:
@@ -13,6 +13,7 @@ class PowerpointPipeline:
         self,
         verbose: bool = False,
         extract_namespaces: bool = False,
+        pipeline_config: dict = None,
         namespaces: dict = {
             "a": "http://schemas.openxmlformats.org/drawingml/2006/main",
             "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
@@ -27,15 +28,17 @@ class PowerpointPipeline:
         self.verbose = verbose
         self.extract_namespaces = extract_namespaces
         self.namespaces = namespaces
+        self.pipeline_config = pipeline_config
         self.get_config()
 
     def get_config(self):
-        # Load config file
-        config_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "config.json"
-        )
-        with open(config_path) as f:
-            self.config = json.load(f)
+        if self.pipeline_config:
+            self.config = self.pipeline_config
+        else:
+            # Load config file from packaged resource if no runtime config provided
+            config_path = get_resource_path("slidemob/config.json")
+            with open(config_path) as f:
+                self.config = json.load(f)
 
         self.root_folder = self.config["root_folder"]
         self.pptx_folder = self.config["pptx_folder"]
@@ -68,11 +71,7 @@ class PowerpointPipeline:
         self.style_instructions = model_settings.style_instructions
 
         # load reasoning model list from reasoning_model_list.json
-        reasoning_model_list_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "utils",
-            "reasoning_model_list.json",
-        )
+        reasoning_model_list_path = get_resource_path("slidemob/utils/reasoning_model_list.json")
         with open(reasoning_model_list_path) as f:
             self.reasoning_model_list = json.load(f)
 

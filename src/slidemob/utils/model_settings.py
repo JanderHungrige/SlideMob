@@ -5,8 +5,10 @@ from typing import Any
 
 from dotenv import load_dotenv
 from openai import OpenAI
+from .path_manager import get_user_config_path, get_user_env_path
 
-load_dotenv()
+# Only load local .env if it exists (for dev), otherwise we will rely on user home dir
+load_dotenv() 
 
 
 @dataclass
@@ -20,8 +22,9 @@ class ModelSettings:
     azure_config: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        # Force reload environment variables
-        load_dotenv(override=True)
+        # Force reload environment variables from user's writable .env
+        env_path = get_user_env_path()
+        load_dotenv(env_path, override=True)
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         self.huggingface_api_key = os.getenv("HUGGINGFACE")
         self.deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
@@ -47,6 +50,7 @@ class ModelSettings:
         self.style_instructions = self.gui_config.get("style_instructions", "")
         self.update_language = self.gui_config.get("update_language", False)
         self.fresh_extract = self.gui_config.get("fresh_extract", False)
+        self.translation_strategy = self.gui_config.get("translation_strategy", "classic")
 
     def _setup_clients(self) -> None:
         """Setup translation and mapping clients based on configuration"""
@@ -115,9 +119,7 @@ class ModelSettings:
     def _load_gui_config(self) -> None:
         """Load configuration from config_gui.json"""
         try:
-            config_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), "config_gui.json"
-            )
+            config_path = get_user_config_path()
             with open(config_path) as f:
                 self.gui_config = json.load(f)
         except Exception as e:

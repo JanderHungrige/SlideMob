@@ -20,8 +20,10 @@ from ..utils.promts import (
     translation_prompt_llama2_1,
     translation_prompt_openai_0,
     translation_prompt_openai_1,
+    translation_prompt_with_markers,
 )
 from .base_class import PowerpointPipeline
+from ..utils.marker_utils import MarkerUtils
 
 
 class TranslationResponse(BaseModel):
@@ -60,6 +62,7 @@ class SlideTranslator:
         self.extract_text_runs = pipeline_settings.extract_text_runs
         self.translation_reasoning_model = pipeline_settings.translation_reasoning_model
         self.mapping_reasoning_model = pipeline_settings.mapping_reasoning_model
+        self.translation_strategy = pipeline_settings.translation_strategy
 
         # Load language codes mapping
         config_languages_path = os.path.join(
@@ -636,6 +639,57 @@ class SlideTranslator:
         if self.verbose:
             print(f"\tTranslation map: {translation_map}")
         return translation_map
+
+    def translate_paragraph_with_markers(self, p_element: ET.Element):
+        """Translate a paragraph using the marker-based strategy."""
+        marked_text, run_properties_map = MarkerUtils.paragraph_to_marked_text(
+            p_element, self.namespaces
+        )
+        
+        if not marked_text.strip():
+            return
+            
+        prompt = translation_prompt_with_markers(
+            marked_text, self.target_language, self.style_instructions
+        )
+        
+        try:
+            # Use OpenAI or similar client to translate
+            response = self.use_translation_OpenAIclient(prompt, 0.7, "text")
+            translated_marked_text = response.choices[0].message.content.strip()
+            
+            # Extract content from <translation> tags if present
+            translation_match = re.search(
+                r"<translation>\s*(.*?)\s*</translation>", 
+                translated_marked_text, 
+                re.DOTALL | re.IGNORECASE
+            )
+            if translation_match:
+                translated_marked_text = translation_match.group(1).strip()
+            
+            if self.verbose:
+                print(f"\tOriginal marked text: {marked_text}")
+                print(f"\tTranslated marked text: {translated_marked_text}")
+
+            # Reconstruct runs
+            new_runs = MarkerUtils.marked_text_to_runs(
+                translated_marked_text, run_properties_map, self.namespaces
+            )
+            
+            # Clear existing runs and add new ones
+            # In PowerPoint XML, a:p can contain a:pPr, a:r, a:br, a:fld, etc.
+            # We want to keep a:pPr if it exists and replace everything else.
+            pPr = p_element.find("a:pPr", self.namespaces)
+            p_element.clear()
+            if pPr is not None:
+                p_element.append(pPr)
+            
+            for run in new_runs:
+                p_element.append(run)
+                
+        except Exception as e:
+            print(f"Error in marker-based translation: {e}")
+            traceback.print_exc()
 
     def detect_pptx_language(self, text: str) -> str:
         """Detect language and return PowerPoint language code."""

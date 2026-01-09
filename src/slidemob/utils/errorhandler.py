@@ -7,8 +7,8 @@ import traceback
 
 def setup_error_logging():
     # Get the slidemob package directory
-    current_dir = Path(__file__).parent.parent  # Go up one level from utils to slidemob
-    log_dir = current_dir / "error_logs"
+    # Use user's home directory for logs to ensure write permissions
+    log_dir = Path(os.path.expanduser("~")) / ".slidemob" / "error_logs"
 
     # Create error_logs directory if it doesn't exist
     os.makedirs(log_dir, exist_ok=True)

@@ -1,17 +1,45 @@
 import os
+import sys
 
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    if hasattr(sys, '_MEIPASS'):
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    else:
+        # In dev, use the src/slidemob directory as base
+        # path_manager.py is in src/slidemob/utils/
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+        # If relative path starts with 'slidemob/', strip it in dev mode 
+        # because we are already IN slidemob folder
+        if relative_path.startswith("slidemob/"):
+            relative_path = relative_path.replace("slidemob/", "", 1)
+            
+    return os.path.join(base_path, relative_path)
+
+def get_user_config_path():
+    """Get path to user's writable config file"""
+    user_dir = os.path.join(os.path.expanduser("~"), ".slidemob")
+    os.makedirs(user_dir, exist_ok=True)
+    return os.path.join(user_dir, "config_gui.json")
+
+def get_user_env_path():
+    """Get path to user's writable .env file"""
+    user_dir = os.path.join(os.path.expanduser("~"), ".slidemob")
+    os.makedirs(user_dir, exist_ok=True)
+    return os.path.join(user_dir, ".env")
 
 def get_initial_config_path() -> str:
-    return os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config.json"
-    )
+    # In spec: ('src/slidemob/config.json', 'slidemob') -> sys._MEIPASS/slidemob/config.json
+    return get_resource_path("slidemob/config.json")
 
 
 class PathManager:
     def __init__(self, input_file: str, output_file: str = None):
-        # Project root (where the application is installed)
-        self.project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        print(self.project_root)
+        # Project root should point to where configs are
+        self.project_root = os.path.dirname(get_resource_path("slidemob/config.json"))
+        print(f"Project root resolved to: {self.project_root}")
 
         # Working paths (specific to current PowerPoint)
         self.file_folder = os.path.dirname(input_file)
@@ -32,7 +60,7 @@ class PathManager:
             )
 
     def get_config_path(self) -> str:
-        return os.path.join(self.project_root, "config.json")
+        return get_resource_path("slidemob/config.json")
 
     def get_output_pptx_path(self, filename: str) -> str:
         return os.path.join(self.output_dir, f"translated_{filename}")

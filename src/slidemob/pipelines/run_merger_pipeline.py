@@ -8,8 +8,8 @@ from ..core_functions.merger import RunMerger
 
 
 class PowerPointRunMerger(PowerpointPipeline):
-    def __init__(self, fresh_extract: bool = True):
-        super().__init__()
+    def __init__(self, fresh_extract: bool = True, pipeline_config: dict = None):
+        super().__init__(pipeline_config=pipeline_config)
 
         self.fresh_extract = fresh_extract
         self.merger = None  # Will be initialized after namespace detection

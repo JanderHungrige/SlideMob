@@ -7,9 +7,9 @@ from ..core_functions.polisher import SlidePolisher
 
 class PowerPointPolisher(PowerpointPipeline):
     def __init__(
-        self, Further_StyleInstructions: str = "None", fresh_extract: bool = True
+        self, Further_StyleInstructions: str = "None", fresh_extract: bool = True, pipeline_config: dict = None
     ):
-        super().__init__()
+        super().__init__(pipeline_config=pipeline_config)
 
         self.fresh_extract = fresh_extract
         # Initialize transformer and translator

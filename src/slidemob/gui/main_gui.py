@@ -13,7 +13,9 @@ from ..pipelines.run_merger_pipeline import PowerPointRunMerger
 from ..pipelines.translator_pipeline import PowerPointTranslator
 from ..utils.config import create_config
 from ..utils.errorhandler import setup_error_logging
-from ..utils.path_manager import PathManager
+from ..utils.config import create_config
+from ..utils.errorhandler import setup_error_logging
+from ..utils.path_manager import PathManager, get_resource_path, get_user_config_path
 from .settings_window import SettingsWindow
 
 
@@ -64,9 +66,8 @@ class SlideMobGUI(PowerpointPipeline):
         self.gui_output_path.trace_add("write", self._update_output_path)
 
         # Load language codes first
-        config_languages_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "config_languages.json"
-        )
+        # Load language codes first
+        config_languages_path = get_resource_path("slidemob/config_languages.json")
         with open(config_languages_path) as f:
             language_config = json.load(f)
         self.language_options = [
@@ -74,22 +75,17 @@ class SlideMobGUI(PowerpointPipeline):
         ]
 
         # Load the logo image
-        current_dir = os.path.dirname(__file__)
-        company_logo_path = os.path.join(
-            current_dir, "../gui/assets/eraneos_bg Small.png"
-        )
+        company_logo_path = get_resource_path("slidemob/gui/assets/eraneos_bg Small.png")
         company_logo_path = os.path.abspath(company_logo_path)
         self.company_logo_image = tk.PhotoImage(file=company_logo_path)
 
         # Load Icon
-        app_logo_path = os.path.join(
-            current_dir, "../gui/assets/doppelfahreimer Small Small.png"
-        )
+        app_logo_path = get_resource_path("slidemob/gui/assets/doppelfahreimer Small Small.png")
         app_logo_path = os.path.abspath(app_logo_path)
         self.app_logo_image = tk.PhotoImage(file=app_logo_path)
 
         # Load Settings Icon
-        settings_icon_path = os.path.join(current_dir, "../gui/assets/Setting_icon.png")
+        settings_icon_path = get_resource_path("slidemob/gui/assets/Setting_icon.png")
         settings_icon_path = os.path.abspath(settings_icon_path)
         print(f"Looking for settings icon at: {settings_icon_path}")  # Debug print
         self.settings_icon_image = tk.PhotoImage(file=settings_icon_path)
@@ -471,6 +467,7 @@ class SlideMobGUI(PowerpointPipeline):
                 polisher = PowerPointPolisher(
                     Further_StyleInstructions=self.gui_style_instructions.get(),
                     fresh_extract=not self.extract_var.get(),
+                    pipeline_config=config,
                 )
                 success = polisher.polish_presentation()
                 if not success:
@@ -487,6 +484,7 @@ class SlideMobGUI(PowerpointPipeline):
                 translator = PowerPointTranslator(
                     progress_callback=self.update_translation_progress,
                     stop_check_callback=lambda: self.stop_requested,
+                    pipeline_config=config,
                 )
                 success = translator.translate_presentation()
 
@@ -510,7 +508,8 @@ class SlideMobGUI(PowerpointPipeline):
                         self.extract_var.get()
                         or self.polish_var.get()
                         or self.translate_var.get()
-                    )
+                    ),
+                    pipeline_config=config,
                 )
                 success = merger.merge_runs_in_presentation()
                 if not success:
@@ -536,9 +535,7 @@ class SlideMobGUI(PowerpointPipeline):
     def load_gui_config(self):
         """Load GUI configuration from config file"""
         try:
-            config_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), "config_gui.json"
-            )
+            config_path = get_user_config_path()
             if os.path.exists(config_path):
                 with open(config_path) as f:
                     config = json.load(f)
@@ -577,9 +574,12 @@ class SlideMobGUI(PowerpointPipeline):
         """Save GUI configuration to config file"""
         try:
             # Always load existing config first
-            config_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), "config_gui.json"
-            )
+            config_path = get_user_config_path()
+            if not os.path.exists(config_path):
+                 # Create empty config if not exists
+                 with open(config_path, 'w') as f:
+                     json.dump({}, f)
+                     
             with open(config_path) as f:
                 config = json.load(f)
 
@@ -634,9 +634,7 @@ class SlideMobGUI(PowerpointPipeline):
         """Get a value from the config file"""
         try:
             with open(
-                os.path.join(
-                    os.path.dirname(os.path.dirname(__file__)), "config_gui.json"
-                )
+                get_user_config_path()
             ) as f:
                 config = json.load(f)
                 return config.get(key, default)
@@ -647,9 +645,11 @@ class SlideMobGUI(PowerpointPipeline):
     def update_config(self, new_values):
         """Update the config with new values"""
         try:
-            config_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), "config_gui.json"
-            )
+            config_path = get_user_config_path()
+            if not os.path.exists(config_path):
+                 with open(config_path, 'w') as f:
+                     json.dump({}, f)
+
             with open(config_path) as f:
                 config = json.load(f)
 

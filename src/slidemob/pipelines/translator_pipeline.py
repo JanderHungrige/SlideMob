@@ -5,14 +5,15 @@ from ..core_functions.translator import SlideTranslator
 
 
 class PowerPointTranslator:
-    def __init__(self, progress_callback=None, stop_check_callback=None):
+    def __init__(self, progress_callback=None, stop_check_callback=None, pipeline_config: dict = None):
         self.progress_callback = progress_callback
         self.stop_check_callback = stop_check_callback
+        self.pipeline_config = pipeline_config
 
     def translate_presentation(self):
         """Main method to handle the full translation process"""
         try:
-            self.settings = PowerpointPipeline()
+            self.settings = PowerpointPipeline(pipeline_config=self.pipeline_config)
             self.translator = SlideTranslator(pipeline_settings=self.settings)
 
             # Extract PPTX if needed

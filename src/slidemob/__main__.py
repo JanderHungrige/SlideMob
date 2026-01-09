@@ -2,6 +2,7 @@
 """Entry point for the slidemob package."""
 import argparse
 import os
+import sys
 import tkinter as tk
 
 from openai import OpenAI
@@ -61,9 +62,25 @@ def main():
         except Exception as e:
             print(f"Error in pipeline: {e!s}")
     else:
-        root = tk.Tk()
-        app = SlideMobGUI(root)
-        root.mainloop()
+        try:
+            root = tk.Tk()
+            app = SlideMobGUI(root)
+            root.mainloop()
+        except Exception as e:
+            import traceback
+            import sys
+            # Attempt to show error in message box if GUI fails
+            try:
+                import tkinter.messagebox as mb
+                mb.showerror("Application Error", f"The application failed to start:\n\n{e}\n\n{traceback.format_exc()}")
+            except:
+                print(f"Critical error: {e}", file=sys.stderr)
+                print(traceback.format_exc(), file=sys.stderr)
+            sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":

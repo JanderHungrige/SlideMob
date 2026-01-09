@@ -15,7 +15,9 @@ def create_config(path_manager: PathManager, target_language: str = "English"):
         "target_language": target_language,
     }
 
-    with open(path_manager.get_config_path(), "w") as f:
-        json.dump(config, f)
+    # In frozen app, we cannot write to the config path (sys._MEIPASS)
+    # We now pass config in-memory to pipelines.
+    # with open(path_manager.get_config_path(), "w") as f:
+    #     json.dump(config, f)
 
     return config

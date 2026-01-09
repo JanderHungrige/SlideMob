@@ -228,3 +228,25 @@ Return a valid JSON object with this structure:
 }}
 
 Important: Provide ONLY the JSON output, no explanations."""
+def translation_prompt_with_markers(text, target_language, Further_StyleInstructions):
+    return f"""You are a professional translator. Your task is to translate the following text while preserving special markers that indicate formatting.
+
+Text to translate (with markers like <f1>, <f2>, etc.):
+<text_to_translate>
+{text}
+</text_to_translate>
+
+Target Language: {target_language}
+
+Instructions:
+1. Translate the text into {target_language}.
+2. Preserve all markers (<f1>...</f1>, <f2>...</f2>, etc.) and place them around the words or phrases in the translation that carry the same MEANING as the words they were around in the original text.
+3. Do not change the IDs of the markers (e.g., if <f1> was around "Revenue", it should be around the translation of "Revenue").
+4. Ensure the output is natural and grammatically correct in the target language.
+5. If a marker was around multiple words, it should stay around the equivalent words in the translation.
+6. Style guidelines: {Further_StyleInstructions}
+
+Return ONLY the translated text with the markers. Do not include any explanations or other tags.
+
+<translation>
+"""
