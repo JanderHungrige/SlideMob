@@ -324,6 +324,25 @@ class SlideMobGUI(PowerpointPipeline):
         )
         self.stop_btn.pack(side="right")
         Tooltip(self.stop_btn, TOOLTIP_TEXTS["stop"])
+        
+        # Current Configuration Summary
+        config_section = ctk.CTkFrame(frame, corner_radius=8)
+        config_section.pack(fill="x", pady=(20, 0))
+        
+        ctk.CTkLabel(
+            config_section,
+            text="Current Configuration",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(anchor="w", padx=15, pady=(15, 10))
+        
+        self.home_config_label = ctk.CTkLabel(
+            config_section,
+            text=self._get_config_summary(),
+            font=ctk.CTkFont(size=12),
+            text_color="gray60",
+            justify="left"
+        )
+        self.home_config_label.pack(anchor="w", padx=15, pady=(0, 15))
     
     def _create_processing_tab(self):
         """Create the Processing tab with all processing options."""
@@ -440,25 +459,6 @@ class SlideMobGUI(PowerpointPipeline):
             height=40
         )
         style_entry.pack(fill="x", padx=15, pady=(0, 15))
-        
-        # Method Info (read-only display)
-        info_section = ctk.CTkFrame(frame, corner_radius=8)
-        info_section.pack(fill="x")
-        
-        ctk.CTkLabel(
-            info_section,
-            text="Current Configuration",
-            font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(anchor="w", padx=15, pady=(15, 10))
-        
-        info_text = f"Translation: {self.translation_method.get()} | Mapping: {self.mapping_method.get()}"
-        self.config_info_label = ctk.CTkLabel(
-            info_section,
-            text=info_text,
-            font=ctk.CTkFont(size=13),
-            text_color="gray60"
-        )
-        self.config_info_label.pack(anchor="w", padx=15, pady=(0, 15))
     
     def _create_config_tab(self):
         """Create the Configuration tab with model settings."""
@@ -625,6 +625,21 @@ class SlideMobGUI(PowerpointPipeline):
                 set_key(env_path, env_var, value)
         
         messagebox.showinfo("Saved", "API keys saved successfully!")
+    
+    def _get_config_summary(self) -> str:
+        """Generate a summary of current configuration for display."""
+        overwrite_status = "Yes" if self.overwrite_file.get() else "No"
+        return (
+            f"Target Language: {self.gui_target_language.get()}\n"
+            f"Strategy: {self.translation_strategy.get()}\n"
+            f"Translation: {self.translation_method.get()} | Mapping: {self.mapping_method.get()}\n"
+            f"Overwrite Original: {overwrite_status}"
+        )
+    
+    def _refresh_home_config(self):
+        """Refresh the config summary on the Home tab."""
+        if hasattr(self, 'home_config_label'):
+            self.home_config_label.configure(text=self._get_config_summary())
     
     # -------------------------------------------------------------------------
     # Core Methods (kept from original)
