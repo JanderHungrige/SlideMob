@@ -56,6 +56,7 @@ class PowerpointPipeline:
         self.reduce_slides = model_settings.reduce_slides
         self.update_language = model_settings.update_language
         self.fresh_extract = model_settings.fresh_extract
+        self.translation_strategy = model_settings.translation_strategy
 
         # Copy relevant attributes from model settings
         self.translation_client = model_settings.translation_client

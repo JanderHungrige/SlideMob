@@ -35,7 +35,8 @@ class PowerPointTranslator:
             return True
 
         except Exception as e:
-            print(f"Error translating presentation: {e}")
-            print("Full traceback:")
-            print(traceback.format_exc())
+            import sys
+            import traceback
+            print(f"Error translating presentation: {e}", file=sys.stderr)
+            print(traceback.format_exc(), file=sys.stderr)
             return False

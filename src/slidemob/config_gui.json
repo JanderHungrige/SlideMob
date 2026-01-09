@@ -16,5 +16,6 @@
     "translation_api_url": "http://127.0.0.1:1234",
     "mapping_api_url": "http://127.0.0.1:1234",
     "azure_translation_config": null,
-    "azure_mapping_config": null
+    "azure_mapping_config": null,
+    "translation_strategy": "classic"
 }

@@ -757,44 +757,56 @@ class SlideTranslator:
                     prefix = key.split(":")[1]
                     namespaces[prefix] = value
 
-            # Extract and create translation mapping
-            text_elements, original_text_elements = self.extract_text_runs(slide_file)
-            translation_map = self.create_translation_map(
-                text_elements, original_text_elements
-            )
+            if self.translation_strategy == "marker-based":
+                if self.verbose:
+                    print(f"\tUsing marker-based translation strategy")
+                for p_element in root.findall(".//a:p", self.namespaces):
+                    # Check for stop request
+                    if stop_check_callback and stop_check_callback():
+                        print("\nProcessing stopped by user")
+                        return False
+                    self.translate_paragraph_with_markers(p_element)
+            else:
+                if self.verbose:
+                    print(f"\tUsing classic translation strategy")
+                # Extract and create translation mapping
+                text_elements, original_text_elements = self.extract_text_runs(slide_file)
+                translation_map = self.create_translation_map(
+                    text_elements, original_text_elements
+                )
 
-            # Update text while preserving XML structure and whitespace
-            for original_text, translation in translation_map.items():
-                # Check for stop request during translation updates
-                if stop_check_callback and stop_check_callback():
-                    print("\nProcessing stopped by user")
-                    return False
+                # Update text while preserving XML structure and whitespace
+                for original_text, translation in translation_map.items():
+                    # Check for stop request during translation updates
+                    if stop_check_callback and stop_check_callback():
+                        print("\nProcessing stopped by user")
+                        return False
 
-                if translation == None:  # Skip empty translations
-                    continue
-                # Update Text
-                for element in root.findall(".//a:t", self.namespaces):
-                    if element.text and element.text.strip() == original_text:
-                        if translation.strip():  # If we have a valid translation
-                            # Preserve any leading/trailing whitespace from the original
-                            leading_space = ""
-                            trailing_space = ""
-                            if element.text.startswith(" "):
-                                leading_space = " "
-                            if element.text.endswith(" "):
-                                trailing_space = " "
-                            # Update text
-                            element.text = (
-                                leading_space + translation.strip() + trailing_space
-                            )
+                    if translation == None:  # Skip empty translations
+                        continue
+                    # Update Text
+                    for element in root.findall(".//a:t", self.namespaces):
+                        if element.text and element.text.strip() == original_text:
+                            if translation.strip():  # If we have a valid translation
+                                # Preserve any leading/trailing whitespace from the original
+                                leading_space = ""
+                                trailing_space = ""
+                                if element.text.startswith(" "):
+                                    leading_space = " "
+                                if element.text.endswith(" "):
+                                    trailing_space = " "
+                                # Update text
+                                element.text = (
+                                    leading_space + translation.strip() + trailing_space
+                                )
 
-                        else:
-                            # Find the parent run ('a:r') element and remove it
-                            parent_run = element.getparent()
-                            if parent_run is not None:
-                                parent_paragraph = parent_run.getparent()
-                                if parent_paragraph is not None:
-                                    parent_paragraph.remove(parent_run)
+                            else:
+                                # Find the parent run ('a:r') element and remove it
+                                parent_run = element.getparent()
+                                if parent_run is not None:
+                                    parent_paragraph = parent_run.getparent()
+                                    if parent_paragraph is not None:
+                                        parent_paragraph.remove(parent_run)
 
                 if self.update_language:
                     # Check for stop request during language updates

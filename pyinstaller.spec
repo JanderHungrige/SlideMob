@@ -71,6 +71,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='SlideMob.app',
-    icon=os.path.join(project_root, 'src/slidemob/images/icon.icns') if os.path.exists(os.path.join(project_root, 'src/slidemob/images/icon.icns')) else None,
+    icon=os.path.join(project_root, 'src/slidemob/images/Appleicon.icns') if os.path.exists(os.path.join(project_root, 'src/slidemob/images/Appleicon.icns')) else None,
     bundle_identifier='com.slidemob.app',
 )
