@@ -63,7 +63,8 @@ def main():
             print(f"Error in pipeline: {e!s}")
     else:
         try:
-            root = tk.Tk()
+            import customtkinter as ctk
+            root = ctk.CTk()
             app = SlideMobGUI(root)
             root.mainloop()
         except Exception as e:
