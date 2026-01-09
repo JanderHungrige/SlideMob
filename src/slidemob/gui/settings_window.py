@@ -151,6 +151,15 @@ class SettingsWindow:
         else:
             string_var.set("*" * 30 if api_key else "")
             button["text"] = "Show"
+            
+    def show_strategy_help(self):
+        """Show help for translation strategies"""
+        help_text = (
+            "Translation Strategies:\n\n"
+            "• Classic: Traditional method that translates text segments individually and then maps them back to their original positions. Best for simple layouts.\n\n"
+            "• Marker-based: Newer method that uses temporary markers within the text to maintain precise formatting, styles, and positions during the translation process. Better for complex slides with mixed formatting."
+        )
+        messagebox.showinfo("Translation Strategies Help", help_text)
 
     def save_settings(self):
         # Create .env file if it doesn't exist
@@ -228,6 +237,7 @@ class SettingsWindow:
             "mapping_api_url": mapping_api_url,
             "azure_translation_config": azure_translation_config,
             "azure_mapping_config": azure_mapping_config,
+            "translation_strategy": self.translation_strategy.get(),
         }
 
         # Update parent's config
@@ -283,6 +293,7 @@ class SettingsWindow:
         # Add this line around line 287, after the other model initializations:
         self.azure_mapping_model = tk.StringVar(value=self.parent.mapping_model)
         self.azure_mapping_endpoint = tk.StringVar(value=self.parent.mapping_api_url)
+        self.translation_strategy = tk.StringVar(value=self.parent.translation_strategy.get())
 
     def create_widgets(self):
         # Remove the existing container and canvas setup since we're using tabs
@@ -632,7 +643,33 @@ class SettingsWindow:
             self.azure_translation_frame, textvariable=self.azure_translation_model
         ).pack(side="left", padx=5)
 
-        # Azure Configuration Settings
+        azure_config_frame = ttk.Frame(self.azure_translation_frame)
+        azure_config_frame.pack(fill="x", pady=2)
+
+        # Translation Strategy Selection
+        strategy_frame = ttk.Frame(translation_frame)
+        strategy_frame.pack(fill="x", pady=(10, 0))
+        
+        ttk.Label(strategy_frame, text="Translation Strategy:").pack(side="left")
+        
+        strategies = ["classic", "marker-based"]
+        strategy_menu = ttk.Combobox(
+            strategy_frame,
+            textvariable=self.translation_strategy,
+            values=strategies,
+            state="readonly",
+            width=20
+        )
+        strategy_menu.pack(side="left", padx=5)
+        
+        ttk.Button(
+            strategy_frame,
+            text="?",
+            width=3,
+            command=self.show_strategy_help,
+            style="Blue.TButton"
+        ).pack(side="left")
+
         self.translation_temperature = tk.DoubleVar(value=0.7)
         self.translation_frequency_penalty = tk.DoubleVar(value=0.0)
         self.translation_presence_penalty = tk.DoubleVar(value=0.0)

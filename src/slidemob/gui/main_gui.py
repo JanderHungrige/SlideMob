@@ -52,6 +52,7 @@ class SlideMobGUI(PowerpointPipeline):
         self.update_language = tk.BooleanVar(value=False)
         self.reduce_slides = tk.BooleanVar(value=False)
         self.merge_runs_var = tk.BooleanVar(value=False)
+        self.translation_strategy = tk.StringVar(self.root, value="classic")
 
         self.load_gui_config()
 
@@ -560,6 +561,7 @@ class SlideMobGUI(PowerpointPipeline):
                 self.translation_method.set(config.get("translation_method", "OpenAI"))
                 self.gui_style_instructions.set(config.get("style_instructions", ""))
                 self.mapping_method.set(config.get("mapping_method", "OpenAI"))
+                self.translation_strategy.set(config.get("translation_strategy", "classic"))
 
                 # Load path settings if they exist
                 if "pptx_path" in config:
@@ -601,6 +603,7 @@ class SlideMobGUI(PowerpointPipeline):
                         "mapping_model": self.mapping_model,
                         "translation_api_url": self.translation_api_url,
                         "mapping_api_url": self.mapping_api_url,
+                        "translation_strategy": self.translation_strategy.get(),
                     }
                 )
             else:
