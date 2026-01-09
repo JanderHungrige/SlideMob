@@ -14,7 +14,7 @@ from ..pipelines.run_merger_pipeline import PowerPointRunMerger
 from ..pipelines.translator_pipeline import PowerPointTranslator
 from ..utils.config import create_config
 from ..utils.errorhandler import setup_error_logging
-from ..utils.path_manager import PathManager, get_resource_path, get_user_config_path
+from ..utils.path_manager import PathManager, get_resource_path, get_user_config_path, get_user_env_path
 from .settings_window import SettingsWindow
 from .tooltips import Tooltip, TOOLTIP_TEXTS
 
@@ -82,8 +82,32 @@ class SlideMobGUI(PowerpointPipeline):
         self.gui_pptx_path.trace_add("write", self._update_pptx_path)
         self.gui_output_path.trace_add("write", self._update_output_path)
         
+        # Load logo images
+        self._load_images()
+        
         # Create the UI
         self._create_ui()
+    
+    def _load_images(self):
+        """Load SlideMob logo images."""
+        try:
+            from PIL import Image, ImageTk
+            
+            # Load app logo
+            logo_path = get_resource_path("slidemob/images/doppelfahreimerSmall.png")
+            logo_image = Image.open(logo_path)
+            logo_image = logo_image.resize((60, 60), Image.Resampling.LANCZOS)
+            self.app_logo = ctk.CTkImage(light_image=logo_image, dark_image=logo_image, size=(60, 60))
+            
+            # Load company logo for corner
+            company_path = get_resource_path("slidemob/gui/assets/eraneos_bg Small.png")
+            company_image = Image.open(company_path)
+            company_image = company_image.resize((80, 40), Image.Resampling.LANCZOS)
+            self.company_logo = ctk.CTkImage(light_image=company_image, dark_image=company_image, size=(80, 40))
+        except Exception as e:
+            print(f"Warning: Could not load images: {e}")
+            self.app_logo = None
+            self.company_logo = None
     
     def _update_pptx_path(self, *args):
         self.pptx_path = self.gui_pptx_path.get()
@@ -116,6 +140,8 @@ class SlideMobGUI(PowerpointPipeline):
             ("home", "Home"),
             ("processing", "Processing"),
             ("translation", "Translation"),
+            ("config", "Configuration"),
+            ("api_keys", "API Keys"),
         ]
         
         for key, label in nav_items:
@@ -147,8 +173,13 @@ class SlideMobGUI(PowerpointPipeline):
             anchor="w",
             command=self.open_settings
         )
-        self.settings_btn.pack(side="bottom", fill="x", padx=10, pady=(5, 20))
+        self.settings_btn.pack(side="bottom", fill="x", padx=10, pady=(5, 10))
         Tooltip(self.settings_btn, TOOLTIP_TEXTS["settings"])
+        
+        # Logo at bottom of sidebar
+        if self.app_logo:
+            logo_label = ctk.CTkLabel(self.sidebar, image=self.app_logo, text="")
+            logo_label.pack(side="bottom", pady=(0, 15))
         
         # Content area
         self.content_area = ctk.CTkFrame(self.main_container, corner_radius=10)
@@ -159,6 +190,8 @@ class SlideMobGUI(PowerpointPipeline):
         self._create_home_tab()
         self._create_processing_tab()
         self._create_translation_tab()
+        self._create_config_tab()
+        self._create_api_keys_tab()
         
         # Show home tab by default
         self._switch_tab("home")
@@ -426,6 +459,172 @@ class SlideMobGUI(PowerpointPipeline):
             text_color="gray60"
         )
         self.config_info_label.pack(anchor="w", padx=15, pady=(0, 15))
+    
+    def _create_config_tab(self):
+        """Create the Configuration tab with model settings."""
+        frame = ctk.CTkFrame(self.content_area, fg_color="transparent")
+        self.tab_frames["config"] = frame
+        
+        # Title
+        ctk.CTkLabel(
+            frame,
+            text="Configuration",
+            font=ctk.CTkFont(size=28, weight="bold")
+        ).pack(anchor="w", pady=(0, 20))
+        
+        # Translation Method Section
+        trans_section = ctk.CTkFrame(frame, corner_radius=8)
+        trans_section.pack(fill="x", pady=(0, 15))
+        
+        ctk.CTkLabel(
+            trans_section,
+            text="Translation Method",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(anchor="w", padx=15, pady=(15, 5))
+        
+        trans_methods = ["OpenAI", "DeepSeek", "Azure OpenAI", "HuggingFace", "LMStudio"]
+        trans_dropdown = ctk.CTkComboBox(
+            trans_section,
+            values=trans_methods,
+            variable=self.translation_method,
+            width=300,
+            height=40,
+            font=ctk.CTkFont(size=14)
+        )
+        trans_dropdown.pack(anchor="w", padx=15, pady=(0, 15))
+        Tooltip(trans_dropdown, TOOLTIP_TEXTS["translation_method"])
+        
+        # Mapping Method Section
+        map_section = ctk.CTkFrame(frame, corner_radius=8)
+        map_section.pack(fill="x", pady=(0, 15))
+        
+        ctk.CTkLabel(
+            map_section,
+            text="Mapping Method",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(anchor="w", padx=15, pady=(15, 5))
+        
+        map_dropdown = ctk.CTkComboBox(
+            map_section,
+            values=trans_methods,
+            variable=self.mapping_method,
+            width=300,
+            height=40,
+            font=ctk.CTkFont(size=14)
+        )
+        map_dropdown.pack(anchor="w", padx=15, pady=(0, 15))
+        Tooltip(map_dropdown, TOOLTIP_TEXTS["mapping_method"])
+        
+        # Model Names Section
+        model_section = ctk.CTkFrame(frame, corner_radius=8)
+        model_section.pack(fill="x", pady=(0, 15))
+        
+        ctk.CTkLabel(
+            model_section,
+            text="Model Configuration",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(anchor="w", padx=15, pady=(15, 5))
+        
+        # Translation Model
+        ctk.CTkLabel(model_section, text="Translation Model:", font=ctk.CTkFont(size=13)).pack(anchor="w", padx=15, pady=(5, 0))
+        self.trans_model_entry = ctk.CTkEntry(model_section, height=35)
+        self.trans_model_entry.insert(0, self.translation_model)
+        self.trans_model_entry.pack(fill="x", padx=15, pady=(0, 10))
+        
+        # Mapping Model
+        ctk.CTkLabel(model_section, text="Mapping Model:", font=ctk.CTkFont(size=13)).pack(anchor="w", padx=15, pady=(5, 0))
+        self.map_model_entry = ctk.CTkEntry(model_section, height=35)
+        self.map_model_entry.insert(0, self.mapping_model)
+        self.map_model_entry.pack(fill="x", padx=15, pady=(0, 15))
+        
+        # Save button
+        save_btn = ctk.CTkButton(
+            frame,
+            text="Save Configuration",
+            height=40,
+            command=self._save_config_settings
+        )
+        save_btn.pack(anchor="w", pady=(10, 0))
+    
+    def _create_api_keys_tab(self):
+        """Create the API Keys tab."""
+        frame = ctk.CTkFrame(self.content_area, fg_color="transparent")
+        self.tab_frames["api_keys"] = frame
+        
+        # Title
+        ctk.CTkLabel(
+            frame,
+            text="API Keys",
+            font=ctk.CTkFont(size=28, weight="bold")
+        ).pack(anchor="w", pady=(0, 20))
+        
+        # Note
+        ctk.CTkLabel(
+            frame,
+            text="API keys are stored securely in your home directory (~/.slidemob/.env)",
+            font=ctk.CTkFont(size=12),
+            text_color="gray60"
+        ).pack(anchor="w", pady=(0, 15))
+        
+        # API Keys Section
+        keys_section = ctk.CTkFrame(frame, corner_radius=8)
+        keys_section.pack(fill="x", pady=(0, 15))
+        
+        api_keys = [
+            ("OpenAI API Key", "OPENAI_API_KEY"),
+            ("DeepSeek API Key", "DEEPSEEK_API_KEY"),
+            ("HuggingFace Token", "HUGGINGFACE"),
+            ("Azure Endpoint Key", "AZURE_OPENAI_ENDPOINT_KEY"),
+            ("Azure Endpoint URL", "AZURE_OPENAI_ENDPOINT"),
+        ]
+        
+        self.api_key_entries = {}
+        
+        for label, env_var in api_keys:
+            ctk.CTkLabel(
+                keys_section,
+                text=label,
+                font=ctk.CTkFont(size=13)
+            ).pack(anchor="w", padx=15, pady=(10, 0))
+            
+            entry = ctk.CTkEntry(keys_section, height=35, show="*")
+            # Load existing value if present
+            existing = os.getenv(env_var, "")
+            if existing:
+                entry.insert(0, existing)
+            entry.pack(fill="x", padx=15, pady=(0, 5))
+            self.api_key_entries[env_var] = entry
+        
+        # Add some padding
+        ctk.CTkFrame(keys_section, fg_color="transparent", height=10).pack()
+        
+        # Save button
+        save_btn = ctk.CTkButton(
+            frame,
+            text="Save API Keys",
+            height=40,
+            command=self._save_api_keys
+        )
+        save_btn.pack(anchor="w", pady=(10, 0))
+    
+    def _save_config_settings(self):
+        """Save configuration settings."""
+        self.translation_model = self.trans_model_entry.get()
+        self.mapping_model = self.map_model_entry.get()
+        self.save_gui_config(save_all=True)
+        messagebox.showinfo("Saved", "Configuration saved successfully!")
+    
+    def _save_api_keys(self):
+        """Save API keys to .env file."""
+        from dotenv import set_key
+        env_path = get_user_env_path()
+        
+        for env_var, entry in self.api_key_entries.items():
+            value = entry.get()
+            if value:
+                set_key(env_path, env_var, value)
+        
+        messagebox.showinfo("Saved", "API keys saved successfully!")
     
     # -------------------------------------------------------------------------
     # Core Methods (kept from original)
