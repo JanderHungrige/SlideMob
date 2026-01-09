@@ -35,6 +35,11 @@ To run SlideMob from source or develop for it, ensure you have the following ins
    poetry shell
    ```
 
+4. Run the application:
+   ```bash
+   poetry run slidemob
+   ```
+
 ## Functional Overview
 
 SlideMob provides a comprehensive suite of processing options for PowerPoint presentations:
