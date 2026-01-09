@@ -132,7 +132,12 @@ class SlideMobGUI(PowerpointPipeline):
             text="SlideMob", 
             font=ctk.CTkFont(size=24, weight="bold")
         )
-        self.title_label.pack(pady=(20, 30))
+        self.title_label.pack(pady=(20, 10))
+        
+        # Logo centered below title
+        if self.app_logo:
+            logo_label = ctk.CTkLabel(self.sidebar, image=self.app_logo, text="")
+            logo_label.pack(pady=(0, 20))
         
         # Navigation buttons
         self.nav_buttons = {}
@@ -175,11 +180,6 @@ class SlideMobGUI(PowerpointPipeline):
         )
         self.settings_btn.pack(side="bottom", fill="x", padx=10, pady=(5, 10))
         Tooltip(self.settings_btn, TOOLTIP_TEXTS["settings"])
-        
-        # Logo at bottom of sidebar
-        if self.app_logo:
-            logo_label = ctk.CTkLabel(self.sidebar, image=self.app_logo, text="")
-            logo_label.pack(side="bottom", pady=(0, 15))
         
         # Content area
         self.content_area = ctk.CTkFrame(self.main_container, corner_radius=10)
@@ -537,6 +537,30 @@ class SlideMobGUI(PowerpointPipeline):
         self.map_model_entry.insert(0, self.mapping_model)
         self.map_model_entry.pack(fill="x", padx=15, pady=(0, 15))
         
+        # Server URLs Section (for LMStudio)
+        url_section = ctk.CTkFrame(frame, corner_radius=8)
+        url_section.pack(fill="x", pady=(0, 15))
+        
+        ctk.CTkLabel(
+            url_section,
+            text="Server URLs (for LMStudio)",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(anchor="w", padx=15, pady=(15, 5))
+        
+        # Translation API URL
+        ctk.CTkLabel(url_section, text="Translation Server URL:", font=ctk.CTkFont(size=13)).pack(anchor="w", padx=15, pady=(5, 0))
+        self.trans_url_entry = ctk.CTkEntry(url_section, height=35)
+        self.trans_url_entry.insert(0, self.translation_api_url)
+        self.trans_url_entry.pack(fill="x", padx=15, pady=(0, 10))
+        Tooltip(self.trans_url_entry, "LMStudio server URL for translation (e.g., http://localhost:1234)")
+        
+        # Mapping API URL
+        ctk.CTkLabel(url_section, text="Mapping Server URL:", font=ctk.CTkFont(size=13)).pack(anchor="w", padx=15, pady=(5, 0))
+        self.map_url_entry = ctk.CTkEntry(url_section, height=35)
+        self.map_url_entry.insert(0, self.mapping_api_url)
+        self.map_url_entry.pack(fill="x", padx=15, pady=(0, 15))
+        Tooltip(self.map_url_entry, "LMStudio server URL for mapping (e.g., http://localhost:1234)")
+        
         # Save button
         save_btn = ctk.CTkButton(
             frame,
@@ -611,7 +635,10 @@ class SlideMobGUI(PowerpointPipeline):
         """Save configuration settings."""
         self.translation_model = self.trans_model_entry.get()
         self.mapping_model = self.map_model_entry.get()
+        self.translation_api_url = self.trans_url_entry.get()
+        self.mapping_api_url = self.map_url_entry.get()
         self.save_gui_config(save_all=True)
+        self._refresh_home_config()
         messagebox.showinfo("Saved", "Configuration saved successfully!")
     
     def _save_api_keys(self):
