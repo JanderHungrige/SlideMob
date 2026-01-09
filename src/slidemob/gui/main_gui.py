@@ -566,7 +566,8 @@ class SlideMobGUI(PowerpointPipeline):
         self.status_var.set("Stopping...")
     
     def open_settings(self):
-        SettingsWindow(self)
+        settings_root = tk.Toplevel(self.root)
+        SettingsWindow(settings_root, self)
     
     def load_gui_config(self):
         try:
