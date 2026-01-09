@@ -528,7 +528,10 @@ class SlideTranslator:
                 )
                 response_format = {"type": "json_object"}
                 response = self.use_mapping_OpenAIclient(prompt, 0.3, response_format)
-                segment_mappings = self._parse_json_response(response.choices[0].message.content)
+                if response:
+                    segment_mappings = self._parse_json_response(response.choices[0].message.content)
+                else:
+                    segment_mappings = {}
 
             elif self.mapping_method == "DeepSeek":
                 prompt = mapping_prompt_deepseek(
@@ -536,7 +539,10 @@ class SlideTranslator:
                 )
                 response_format = {"type": "json_object"}
                 response = self.use_mapping_OpenAIclient(prompt, 0.3, response_format)
-                segment_mappings = self._parse_json_response(response.choices[0].message.content)
+                if response:
+                    segment_mappings = self._parse_json_response(response.choices[0].message.content)
+                else:
+                    segment_mappings = {}
 
             elif self.mapping_method == "HuggingFace":
                 # Use existing HuggingFace implementation
@@ -616,6 +622,11 @@ class SlideTranslator:
                     response = response.json()
 
                 try:
+                    if not response:
+                         if self.verbose:
+                             print(f"\tWarning: No response from mapping service")
+                         raise ValueError("No response from mapping service")
+                         
                     # content = response['choices'][0]['message']['content']
                     content = response.choices[0].message.content
                     if self.mapping_reasoning_model:
