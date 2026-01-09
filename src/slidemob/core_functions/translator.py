@@ -77,6 +77,8 @@ class SlideTranslator:
                 self.translation_model_type = "deepseek"
             elif re.search(r"\bllama\b", self.translation_model.lower()):
                 self.translation_model_type = "llama"
+            elif re.search(r"\bgpt\b", self.translation_model.lower()) or re.search(r"\bopenai\b", self.translation_model.lower()):
+                self.translation_model_type = "openai"
             else:
                 self.translation_model_type = "unknown"
 
@@ -86,6 +88,8 @@ class SlideTranslator:
                 self.mapping_model_type = "deepseek"
             elif re.search(r"\bllama\b", self.mapping_model.lower()):
                 self.mapping_model_type = "llama"
+            elif re.search(r"\bgpt\b", self.mapping_model.lower()) or re.search(r"\bopenai\b", self.mapping_model.lower()):
+                self.mapping_model_type = "openai"
             else:
                 self.mapping_model_type = "unknown"
 

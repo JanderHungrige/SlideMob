@@ -321,10 +321,11 @@ class SettingsWindow:
                 canvas.yview_scroll(-1, "units")
 
         # Bind mousewheel for both canvases
+        # Bind mousewheel for both canvases
         for canvas in [config_canvas, keys_canvas]:
-            canvas.bind_all("<MouseWheel>", lambda e, c=canvas: _on_mousewheel(e, c))
-            canvas.bind_all("<Button-4>", lambda e, c=canvas: _on_mousewheel(e, c))
-            canvas.bind_all("<Button-5>", lambda e, c=canvas: _on_mousewheel(e, c))
+            canvas.bind("<MouseWheel>", lambda e, c=canvas: _on_mousewheel(e, c))
+            canvas.bind("<Button-4>", lambda e, c=canvas: _on_mousewheel(e, c))
+            canvas.bind("<Button-5>", lambda e, c=canvas: _on_mousewheel(e, c))
 
         # Configure the canvases
         for canvas, frame in [
