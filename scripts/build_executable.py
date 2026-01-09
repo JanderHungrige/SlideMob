@@ -19,7 +19,7 @@ def main():
 
     # Build command
     # Use sys.executable to run PyInstaller module directly from the current environment
-    cmd = [sys.executable, "-m", "PyInstaller", "--clean", spec_file]
+    cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", spec_file]
 
     try:
         subprocess.run(cmd, cwd=project_root, check=True)
