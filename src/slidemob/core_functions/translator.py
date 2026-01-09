@@ -237,6 +237,9 @@ class SlideTranslator:
             return text
 
         try:
+            if not response:
+                return text
+
             if chosen_prompt == 0:
                 return response.choices[0].message.content.strip()
 
@@ -318,6 +321,9 @@ class SlideTranslator:
             return text
 
         try:
+            if not response:
+                return text
+                
             content = response.choices[0].message.content.strip()
             # First remove any <think>...</think> content, then search for translation
             content_without_think = re.sub(
@@ -417,6 +423,11 @@ class SlideTranslator:
             response.raise_for_status()
             response = response.json()
         try:
+            if not response:
+                if self.verbose:
+                    print(f"\tWarning: No response from translation service for text: {text[:50]}...")
+                return text
+
             # content = response['choices'][0]['message']['content']
             content = response.choices[0].message.content
             # First remove any <think>...</think> content, then search for translation
