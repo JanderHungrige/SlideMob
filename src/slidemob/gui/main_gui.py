@@ -137,7 +137,11 @@ class SlideMobGUI(PowerpointPipeline):
         # Logo centered below title
         if self.app_logo:
             logo_label = ctk.CTkLabel(self.sidebar, image=self.app_logo, text="")
-            logo_label.pack(pady=(0, 20))
+            logo_label.pack(pady=(0, 10))
+        
+        # Horizontal separator line
+        separator = ctk.CTkFrame(self.sidebar, height=2, fg_color="gray40")
+        separator.pack(fill="x", padx=15, pady=(0, 15))
         
         # Navigation buttons
         self.nav_buttons = {}
