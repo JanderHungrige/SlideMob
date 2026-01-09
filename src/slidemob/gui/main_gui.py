@@ -289,7 +289,7 @@ class SlideMobGUI(PowerpointPipeline):
             state="disabled",
             command=self.stop_processing
         )
-        self.stop_btn.pack(side="right", width=120)
+        self.stop_btn.pack(side="right")
         Tooltip(self.stop_btn, TOOLTIP_TEXTS["stop"])
     
     def _create_processing_tab(self):
