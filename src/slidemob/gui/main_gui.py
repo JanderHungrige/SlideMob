@@ -52,6 +52,7 @@ class SlideMobGUI(PowerpointPipeline):
         self.update_language = tk.BooleanVar(value=False)
         self.reduce_slides = tk.BooleanVar(value=False)
         self.merge_runs_var = tk.BooleanVar(value=False)
+        self.overwrite_file = tk.BooleanVar(value=False)
         self.translation_strategy = tk.StringVar(self.root, value="classic")
 
         self.load_gui_config()
@@ -302,6 +303,10 @@ class SlideMobGUI(PowerpointPipeline):
             translate_checkbox_frame, text="Reduce Slides", variable=self.reduce_slides
         ).pack(side="left", padx=(20, 0))
 
+        ttk.Checkbutton(
+            options_frame, text="Overwrite original file", variable=self.overwrite_file
+        ).pack(anchor="w")
+
         # Translation Options
         translation_frame = ttk.Frame(options_frame)
         translation_frame.pack(fill="x", pady=5)
@@ -437,7 +442,9 @@ class SlideMobGUI(PowerpointPipeline):
             self.save_gui_config()
 
             path_manager = PathManager(
-                self.gui_pptx_path.get(), self.gui_output_path.get()
+                self.gui_pptx_path.get(), 
+                self.gui_output_path.get(),
+                overwrite=self.overwrite_file.get()
             )
             config = create_config(
                 path_manager=path_manager,
@@ -517,9 +524,16 @@ class SlideMobGUI(PowerpointPipeline):
                     raise Exception("Run merging failed")
 
             self.status_var.set("Processing complete!")
-            messagebox.showinfo(
-                "Success", "PowerPoint processing completed successfully!"
+            
+            output_file = path_manager.output_pptx
+            output_folder = path_manager.output_dir
+            
+            success_msg = (
+                f"PowerPoint processing completed successfully!\n\n"
+                f"Filename: {os.path.basename(output_file)}\n"
+                f"Folder: {output_folder}"
             )
+            messagebox.showinfo("Success", success_msg)
 
         except Exception as e:
             self.status_var.set(f"Error occurred: {e!s}")
@@ -562,6 +576,7 @@ class SlideMobGUI(PowerpointPipeline):
                 self.gui_style_instructions.set(config.get("style_instructions", ""))
                 self.mapping_method.set(config.get("mapping_method", "OpenAI"))
                 self.translation_strategy.set(config.get("translation_strategy", "classic"))
+                self.overwrite_file.set(config.get("overwrite_file", False))
 
                 # Load path settings if they exist
                 if "pptx_path" in config:
@@ -604,6 +619,7 @@ class SlideMobGUI(PowerpointPipeline):
                         "translation_api_url": self.translation_api_url,
                         "mapping_api_url": self.mapping_api_url,
                         "translation_strategy": self.translation_strategy.get(),
+                        "overwrite_file": self.overwrite_file.get(),
                     }
                 )
             else:

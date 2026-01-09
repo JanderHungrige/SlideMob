@@ -36,7 +36,7 @@ def get_initial_config_path() -> str:
 
 
 class PathManager:
-    def __init__(self, input_file: str, output_file: str = None):
+    def __init__(self, input_file: str, output_file: str = None, overwrite: bool = False):
         # Project root should point to where configs are
         self.project_root = os.path.dirname(get_resource_path("slidemob/config.json"))
         print(f"Project root resolved to: {self.project_root}")
@@ -45,25 +45,34 @@ class PathManager:
         self.file_folder = os.path.dirname(input_file)
         self.input_file = os.path.abspath(input_file)
         self.working_dir = os.path.dirname(self.input_file)
+        self.overwrite = overwrite
 
         # Derived paths
         self.extracted_dir = os.path.join(self.working_dir, "extracted_pptx")
+        
+        # Determine output directory
         if output_file:
-            self.output_dir = os.path.dirname(output_file)
-            self.output_pptx = os.path.join(
-                self.output_dir, f"translated_{os.path.basename(input_file)}"
-            )
+            self.output_dir = os.path.abspath(output_file)
         else:
-            self.output_dir = os.path.join(self.working_dir, "output")
+            self.output_dir = self.working_dir
+
+        # Determine output filename
+        if self.overwrite:
+            self.output_pptx = self.input_file
+        else:
+            base_name = os.path.splitext(os.path.basename(input_file))[0]
             self.output_pptx = os.path.join(
-                self.output_dir, f"translated_{os.path.basename(input_file)}"
+                self.output_dir, f"{base_name}_slidemobbed.pptx"
             )
 
     def get_config_path(self) -> str:
         return get_resource_path("slidemob/config.json")
 
     def get_output_pptx_path(self, filename: str) -> str:
-        return os.path.join(self.output_dir, f"translated_{filename}")
+        if self.overwrite:
+            return self.input_file
+        base_name = os.path.splitext(filename)[0]
+        return os.path.join(self.output_dir, f"{base_name}_slidemobbed.pptx")
 
     def ensure_directories(self):
         """Create necessary directories if they don't exist"""
