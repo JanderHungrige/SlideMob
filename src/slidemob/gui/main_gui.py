@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import traceback
 import webbrowser
+import requests
 
 import customtkinter as ctk
 
@@ -440,6 +441,25 @@ class SlideMobGUI(PowerpointPipeline):
         # Add some padding at bottom
         ctk.CTkFrame(options_frame, fg_color="transparent", height=15).pack()
     
+    def _check_lmstudio_connection(self, url: str) -> bool:
+        """Verify that the LM Studio server is reachable."""
+        try:
+            # Clean up URL and ensure /v1/models is used for check
+            base_url = url.rstrip('/')
+            if not base_url.endswith("/v1") and "/v1/" not in base_url:
+                check_url = f"{base_url}/v1/models"
+            elif base_url.endswith("/v1"):
+                check_url = f"{base_url}/models"
+            else:
+                # Fallback if URL is already complex
+                check_url = base_url
+
+            response = requests.get(check_url, timeout=3)
+            return response.status_code == 200
+        except Exception as e:
+            print(f"LM Studio connection check failed: {e}")
+            return False
+
     def _create_translation_tab(self):
         """Create the Translation tab with language settings."""
         frame = ctk.CTkFrame(self.content_area, fg_color="transparent")
@@ -891,6 +911,28 @@ class SlideMobGUI(PowerpointPipeline):
         self.stop_btn.configure(state="normal")
         self.root.update()
         
+        # Connection Checks
+        try:
+            # Check translation method
+            if self.translate_var.get() and self.translation_method.get() == "LMStudio":
+                url = self.translation_lmstudio_server.get()
+                if not self._check_lmstudio_connection(url):
+                    messagebox.showerror("Error", f"Could not connect to LM Studio translation server at {url}. Make sure LM Studio is running and the server is started.")
+                    self.stop_processing()
+                    return
+
+            # Check mapping method
+            if self.mapping_method.get() == "LMStudio":
+                url = self.mapping_lmstudio_server.get()
+                if not self._check_lmstudio_connection(url):
+                    messagebox.showerror("Error", f"Could not connect to LM Studio mapping server at {url}. Make sure LM Studio is running and the server is started.")
+                    self.stop_processing()
+                    return
+        except Exception as e:
+            messagebox.showerror("Error", f"Early connection check failed: {e}")
+            self.stop_processing()
+            return
+
         try:
             # Refresh main variables from provider-specific ones before starting
             self._save_config_settings()
