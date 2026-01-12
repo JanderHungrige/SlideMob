@@ -808,7 +808,7 @@ class SlideMobGUI(PowerpointPipeline):
         )
         save_btn.pack(anchor="w", pady=(10, 0), padx=5)
     
-    def _save_config_settings(self):
+    def _save_config_settings(self, show_message=True):
         """Save configuration settings by mapping provider-specific variables to main variables."""
         # Mapping selected method's values to main class variables
         trans_method = self.translation_method.get()
@@ -842,7 +842,8 @@ class SlideMobGUI(PowerpointPipeline):
 
         self.save_gui_config(save_all=True)
         self._refresh_home_config()
-        messagebox.showinfo("Saved", "Configuration saved successfully!")
+        if show_message:
+            messagebox.showinfo("Saved", "Configuration saved successfully!")
     
     def _save_api_keys(self):
         """Save API keys to .env file."""
@@ -934,8 +935,8 @@ class SlideMobGUI(PowerpointPipeline):
             return
 
         try:
-            # Refresh main variables from provider-specific ones before starting
-            self._save_config_settings()
+            # Refresh main variables from provider-specific ones before starting (silently)
+            self._save_config_settings(show_message=False)
             self.save_gui_config()
             
             path_manager = PathManager(
