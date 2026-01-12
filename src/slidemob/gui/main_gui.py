@@ -5,6 +5,7 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import traceback
+import webbrowser
 
 import customtkinter as ctk
 
@@ -15,7 +16,7 @@ from ..pipelines.translator_pipeline import PowerPointTranslator
 from ..utils.config import create_config
 from ..utils.errorhandler import setup_error_logging
 from ..utils.path_manager import PathManager, get_resource_path, get_user_config_path, get_user_env_path
-from .settings_window import SettingsWindow
+# from .settings_window import SettingsWindow  # No longer needed as settings moved to tabs
 from .tooltips import Tooltip, TOOLTIP_TEXTS
 
 # Configure CustomTkinter
@@ -59,6 +60,32 @@ class SlideMobGUI(PowerpointPipeline):
         
         # Status variable
         self.status_var = tk.StringVar(value="Ready")
+        
+        # Provider-specific variables
+        self.openai_translation_model = tk.StringVar(value="gpt-4")
+        self.lmstudio_translation_model = tk.StringVar(value="gpt-4")
+        self.translation_lmstudio_server = tk.StringVar(value="http://localhost:1234")
+        self.translation_huggingface_url = tk.StringVar(value="")
+        self.deepseek_translation_model = tk.StringVar(value="deepseek-chat")
+        self.azure_translation_model = tk.StringVar(value="gpt-4")
+        
+        self.openai_mapping_model = tk.StringVar(value="gpt-4")
+        self.lmstudio_mapping_model = tk.StringVar(value="gpt-4")
+        self.mapping_lmstudio_server = tk.StringVar(value="http://localhost:1234")
+        self.mapping_huggingface_url = tk.StringVar(value="")
+        self.deepseek_mapping_model = tk.StringVar(value="deepseek-chat")
+        self.azure_mapping_model = tk.StringVar(value="gpt-4")
+        
+        # Azure/Advanced parameters
+        self.translation_temperature = tk.DoubleVar(value=0.7)
+        self.translation_frequency_penalty = tk.DoubleVar(value=0.0)
+        self.translation_presence_penalty = tk.DoubleVar(value=0.0)
+        self.translation_max_tokens = tk.IntVar(value=2000)
+        
+        self.mapping_temperature = tk.DoubleVar(value=0.7)
+        self.mapping_frequency_penalty = tk.DoubleVar(value=0.0)
+        self.mapping_presence_penalty = tk.DoubleVar(value=0.0)
+        self.mapping_max_tokens = tk.IntVar(value=2000)
         
         # Load config
         self.load_gui_config()
@@ -182,8 +209,29 @@ class SlideMobGUI(PowerpointPipeline):
             anchor="w",
             command=self.open_settings
         )
-        self.settings_btn.pack(side="bottom", fill="x", padx=10, pady=(5, 10))
+        self.settings_btn.pack(side="bottom", fill="x", padx=10, pady=(5, 5))
         Tooltip(self.settings_btn, TOOLTIP_TEXTS["settings"])
+        
+        # Credit info at bottom
+        self.credit_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.credit_frame.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
+        
+        ctk.CTkLabel(
+            self.credit_frame,
+            text="Created by J. Werth",
+            font=ctk.CTkFont(size=11),
+            text_color="gray60"
+        ).pack()
+        
+        contact_link = ctk.CTkLabel(
+            self.credit_frame,
+            text="Contact (LinkedIn)",
+            font=ctk.CTkFont(size=11, underline=True),
+            text_color="#1E90FF",
+            cursor="hand2"
+        )
+        contact_link.pack()
+        contact_link.bind("<Button-1>", lambda e: webbrowser.open("https://www.linkedin.com/in/jan-werth/"))
         
         # Content area
         self.content_area = ctk.CTkFrame(self.main_container, corner_radius=10)
@@ -464,115 +512,220 @@ class SlideMobGUI(PowerpointPipeline):
         )
         style_entry.pack(fill="x", padx=15, pady=(0, 15))
     
+    def _create_azure_config_frame(self, parent, prefix: str):
+        """Replicate the Azure config frame from SettingsWindow."""
+        config_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        
+        # Temperature
+        row1 = ctk.CTkFrame(config_frame, fg_color="transparent")
+        row1.pack(fill="x", pady=2)
+        ctk.CTkLabel(row1, text="Temperature:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkEntry(row1, textvariable=getattr(self, f"{prefix}_temperature"), width=60, height=28).pack(side="left", padx=5)
+        
+        # Frequency Penalty
+        ctk.CTkLabel(row1, text="Freq Penalty:", font=ctk.CTkFont(size=12)).pack(side="left", padx=(10, 0))
+        ctk.CTkEntry(row1, textvariable=getattr(self, f"{prefix}_frequency_penalty"), width=60, height=28).pack(side="left", padx=5)
+        
+        row2 = ctk.CTkFrame(config_frame, fg_color="transparent")
+        row2.pack(fill="x", pady=2)
+        
+        # Presence Penalty
+        ctk.CTkLabel(row2, text="Pres Penalty:", font=ctk.CTkFont(size=12)).pack(side="left")
+        ctk.CTkEntry(row2, textvariable=getattr(self, f"{prefix}_presence_penalty"), width=60, height=28).pack(side="left", padx=5)
+        
+        # Max Tokens
+        ctk.CTkLabel(row2, text="Max Tokens:", font=ctk.CTkFont(size=12)).pack(side="left", padx=(10, 0))
+        ctk.CTkEntry(row2, textvariable=getattr(self, f"{prefix}_max_tokens"), width=60, height=28).pack(side="left", padx=5)
+        
+        return config_frame
+
+    def update_translation_frames(self, *args):
+        """Show the appropriate frame based on selected translation method."""
+        for frame in [
+            self.openai_translation_models_frame,
+            self.lmstudio_translation_frame,
+            self.huggingface_translation_frame,
+            self.deepseek_translation_frame,
+            self.azure_translation_frame,
+        ]:
+            frame.pack_forget()
+
+        method = self.translation_method.get()
+        if method == "OpenAI":
+            self.openai_translation_models_frame.pack(fill="x", padx=10, pady=5)
+        elif method == "LMStudio":
+            self.lmstudio_translation_frame.pack(fill="x", padx=10, pady=5)
+        elif method == "HuggingFace":
+            self.huggingface_translation_frame.pack(fill="x", padx=10, pady=5)
+        elif method == "DeepSeek":
+            self.deepseek_translation_frame.pack(fill="x", padx=10, pady=5)
+        elif method == "Azure OpenAI":
+            self.azure_translation_frame.pack(fill="x", padx=10, pady=5)
+
+    def update_mapping_frames(self, *args):
+        """Show the appropriate frame based on selected mapping method."""
+        for frame in [
+            self.openai_mapping_models_frame,
+            self.lmstudio_mapping_frame,
+            self.huggingface_mapping_frame,
+            self.deepseek_mapping_frame,
+            self.azure_mapping_frame,
+        ]:
+            frame.pack_forget()
+
+        method = self.mapping_method.get()
+        if method == "OpenAI":
+            self.openai_mapping_models_frame.pack(fill="x", padx=10, pady=5)
+        elif method == "LMStudio":
+            self.lmstudio_mapping_frame.pack(fill="x", padx=10, pady=5)
+        elif method == "HuggingFace":
+            self.huggingface_mapping_frame.pack(fill="x", padx=10, pady=5)
+        elif method == "DeepSeek":
+            self.deepseek_mapping_frame.pack(fill="x", padx=10, pady=5)
+        elif method == "Azure OpenAI":
+            self.azure_mapping_frame.pack(fill="x", padx=10, pady=5)
+
     def _create_config_tab(self):
-        """Create the Configuration tab with model settings."""
-        frame = ctk.CTkFrame(self.content_area, fg_color="transparent")
-        self.tab_frames["config"] = frame
+        """Create the Configuration tab with 1:1 replication of dynamic SettingsWindow behavior."""
+        # Use a scrollable frame for settings if they get long
+        container = ctk.CTkScrollableFrame(self.content_area, fg_color="transparent")
+        self.tab_frames["config"] = container
         
         # Title
         ctk.CTkLabel(
-            frame,
+            container,
             text="Configuration",
             font=ctk.CTkFont(size=28, weight="bold")
-        ).pack(anchor="w", pady=(0, 20))
+        ).pack(anchor="w", pady=(0, 10))
         
-        # Translation Method Section
-        trans_section = ctk.CTkFrame(frame, corner_radius=8)
-        trans_section.pack(fill="x", pady=(0, 15))
+        # --- Translation Settings Section ---
+        trans_main = ctk.CTkFrame(container, corner_radius=8)
+        trans_main.pack(fill="x", pady=(0, 15))
         
         ctk.CTkLabel(
-            trans_section,
-            text="Translation Method",
-            font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(anchor="w", padx=15, pady=(15, 5))
+            trans_main,
+            text="Translation Settings",
+            font=ctk.CTkFont(size=18, weight="bold")
+        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=(15, 5))
         
+        trans_main.columnconfigure(0, weight=0)
+        trans_main.columnconfigure(1, weight=1)
+        
+        # Method Selection
         trans_methods = ["OpenAI", "DeepSeek", "Azure OpenAI", "HuggingFace", "LMStudio"]
+        ctk.CTkLabel(trans_main, text="Method:").grid(row=1, column=0, padx=(15, 10), pady=10, sticky="w")
         trans_dropdown = ctk.CTkComboBox(
-            trans_section,
+            trans_main,
             values=trans_methods,
             variable=self.translation_method,
-            width=300,
-            height=40,
-            font=ctk.CTkFont(size=14)
+            width=200,
+            command=self.update_translation_frames
         )
-        trans_dropdown.pack(anchor="w", padx=15, pady=(0, 15))
-        Tooltip(trans_dropdown, TOOLTIP_TEXTS["translation_method"])
+        trans_dropdown.grid(row=1, column=1, padx=(0, 15), pady=10, sticky="w")
         
-        # Mapping Method Section
-        map_section = ctk.CTkFrame(frame, corner_radius=8)
-        map_section.pack(fill="x", pady=(0, 15))
+        # Provider-specific Model Selection Frame
+        self.trans_model_container = ctk.CTkFrame(trans_main, fg_color="transparent")
+        self.trans_model_container.grid(row=2, column=0, columnspan=2, sticky="ew")
+        
+        # 1. OpenAI Translation
+        self.openai_translation_models_frame = ctk.CTkFrame(self.trans_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.openai_translation_models_frame, text="Model:", width=70, anchor="w").pack(side="left", padx=(15, 0))
+        ctk.CTkComboBox(self.openai_translation_models_frame, values=["gpt-4", "gpt-3.5-turbo", "gpt-4o", "gpt-4o-mini"], variable=self.openai_translation_model).pack(side="left", padx=(5, 15))
+        
+        # 2. LMStudio Translation
+        self.lmstudio_translation_frame = ctk.CTkFrame(self.trans_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.lmstudio_translation_frame, text="Model:", width=70, anchor="w").pack(side="left", padx=(15, 0))
+        ctk.CTkEntry(self.lmstudio_translation_frame, textvariable=self.lmstudio_translation_model, width=150).pack(side="left", padx=5)
+        ctk.CTkLabel(self.lmstudio_translation_frame, text="URL:").pack(side="left", padx=(10, 0))
+        ctk.CTkEntry(self.lmstudio_translation_frame, textvariable=self.translation_lmstudio_server, width=180).pack(side="left", padx=(5, 15))
+        
+        # 3. HuggingFace Translation
+        self.huggingface_translation_frame = ctk.CTkFrame(self.trans_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.huggingface_translation_frame, text="URL:", width=70, anchor="w").pack(side="left", padx=(15, 0))
+        ctk.CTkEntry(self.huggingface_translation_frame, textvariable=self.translation_huggingface_url, width=300).pack(side="left", padx=(5, 15))
+        
+        # 4. DeepSeek Translation
+        self.deepseek_translation_frame = ctk.CTkFrame(self.trans_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.deepseek_translation_frame, text="Model:", width=70, anchor="w").pack(side="left", padx=(15, 0))
+        ctk.CTkComboBox(self.deepseek_translation_frame, values=["deepseek-chat", "deepseek-coder", "deepseek-reasoner"], variable=self.deepseek_translation_model).pack(side="left", padx=(5, 15))
+        
+        # 5. Azure Translation
+        self.azure_translation_frame = ctk.CTkFrame(self.trans_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.azure_translation_frame, text="Model:", width=70, anchor="w").pack(side="left", padx=(15, 0))
+        ctk.CTkEntry(self.azure_translation_frame, textvariable=self.azure_translation_model, width=150).pack(side="left", padx=5)
+        self.azure_trans_params = self._create_azure_config_frame(self.azure_translation_frame, "translation")
+        self.azure_trans_params.pack(fill="x", pady=5)
+        
+        # --- Mapping Settings Section ---
+        map_main = ctk.CTkFrame(container, corner_radius=8)
+        map_main.pack(fill="x", pady=(0, 15))
         
         ctk.CTkLabel(
-            map_section,
-            text="Mapping Method",
-            font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(anchor="w", padx=15, pady=(15, 5))
+            map_main,
+            text="Mapping Settings",
+            font=ctk.CTkFont(size=18, weight="bold")
+        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=(15, 5))
         
+        map_main.columnconfigure(0, weight=0)
+        map_main.columnconfigure(1, weight=1)
+        
+        # Method Selection
+        ctk.CTkLabel(map_main, text="Method:").grid(row=1, column=0, padx=(15, 10), pady=10, sticky="w")
         map_dropdown = ctk.CTkComboBox(
-            map_section,
+            map_main,
             values=trans_methods,
             variable=self.mapping_method,
-            width=300,
-            height=40,
-            font=ctk.CTkFont(size=14)
+            width=200,
+            command=self.update_mapping_frames
         )
-        map_dropdown.pack(anchor="w", padx=15, pady=(0, 15))
-        Tooltip(map_dropdown, TOOLTIP_TEXTS["mapping_method"])
+        map_dropdown.grid(row=1, column=1, padx=(0, 15), pady=10, sticky="w")
         
-        # Model Names Section
-        model_section = ctk.CTkFrame(frame, corner_radius=8)
-        model_section.pack(fill="x", pady=(0, 15))
+        # Provider-specific Model Selection Frame
+        self.map_model_container = ctk.CTkFrame(map_main, fg_color="transparent")
+        self.map_model_container.grid(row=2, column=0, columnspan=2, sticky="ew")
         
-        ctk.CTkLabel(
-            model_section,
-            text="Model Configuration",
-            font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(anchor="w", padx=15, pady=(15, 5))
+        # 1. OpenAI Mapping
+        self.openai_mapping_models_frame = ctk.CTkFrame(self.map_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.openai_mapping_models_frame, text="Model:", width=70, anchor="w").pack(side="left", padx=(15, 0))
+        ctk.CTkComboBox(self.openai_mapping_models_frame, values=["gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-3.5-turbo"], variable=self.openai_mapping_model).pack(side="left", padx=(5, 15))
         
-        # Translation Model
-        ctk.CTkLabel(model_section, text="Translation Model:", font=ctk.CTkFont(size=13)).pack(anchor="w", padx=15, pady=(5, 0))
-        self.trans_model_entry = ctk.CTkEntry(model_section, height=35)
-        self.trans_model_entry.insert(0, self.translation_model)
-        self.trans_model_entry.pack(fill="x", padx=15, pady=(0, 10))
+        # 2. LMStudio Mapping
+        self.lmstudio_mapping_frame = ctk.CTkFrame(self.map_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.lmstudio_mapping_frame, text="Model:", width=70, anchor="w").pack(side="left", padx=(15, 0))
+        ctk.CTkEntry(self.lmstudio_mapping_frame, textvariable=self.lmstudio_mapping_model, width=150).pack(side="left", padx=5)
+        ctk.CTkLabel(self.lmstudio_mapping_frame, text="URL:").pack(side="left", padx=(10, 0))
+        ctk.CTkEntry(self.lmstudio_mapping_frame, textvariable=self.mapping_lmstudio_server, width=180).pack(side="left", padx=(5, 15))
         
-        # Mapping Model
-        ctk.CTkLabel(model_section, text="Mapping Model:", font=ctk.CTkFont(size=13)).pack(anchor="w", padx=15, pady=(5, 0))
-        self.map_model_entry = ctk.CTkEntry(model_section, height=35)
-        self.map_model_entry.insert(0, self.mapping_model)
-        self.map_model_entry.pack(fill="x", padx=15, pady=(0, 15))
+        # 3. HuggingFace Mapping
+        self.huggingface_mapping_frame = ctk.CTkFrame(self.map_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.huggingface_mapping_frame, text="URL:", width=70, anchor="w").pack(side="left", padx=(15, 0))
+        ctk.CTkEntry(self.huggingface_mapping_frame, textvariable=self.mapping_huggingface_url, width=300).pack(side="left", padx=(5, 15))
         
-        # Server URLs Section (for LMStudio)
-        url_section = ctk.CTkFrame(frame, corner_radius=8)
-        url_section.pack(fill="x", pady=(0, 15))
+        # 4. DeepSeek Mapping
+        self.deepseek_mapping_frame = ctk.CTkFrame(self.map_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.deepseek_mapping_frame, text="Model:", width=70, anchor="w").pack(side="left", padx=(15, 0))
+        ctk.CTkComboBox(self.deepseek_mapping_frame, values=["deepseek-chat", "deepseek-coder", "deepseek-reasoner"], variable=self.deepseek_mapping_model).pack(side="left", padx=(5, 15))
         
-        ctk.CTkLabel(
-            url_section,
-            text="Server URLs (for LMStudio)",
-            font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(anchor="w", padx=15, pady=(15, 5))
-        
-        # Translation API URL
-        ctk.CTkLabel(url_section, text="Translation Server URL:", font=ctk.CTkFont(size=13)).pack(anchor="w", padx=15, pady=(5, 0))
-        self.trans_url_entry = ctk.CTkEntry(url_section, height=35)
-        self.trans_url_entry.insert(0, self.translation_api_url)
-        self.trans_url_entry.pack(fill="x", padx=15, pady=(0, 10))
-        Tooltip(self.trans_url_entry, "LMStudio server URL for translation (e.g., http://localhost:1234)")
-        
-        # Mapping API URL
-        ctk.CTkLabel(url_section, text="Mapping Server URL:", font=ctk.CTkFont(size=13)).pack(anchor="w", padx=15, pady=(5, 0))
-        self.map_url_entry = ctk.CTkEntry(url_section, height=35)
-        self.map_url_entry.insert(0, self.mapping_api_url)
-        self.map_url_entry.pack(fill="x", padx=15, pady=(0, 15))
-        Tooltip(self.map_url_entry, "LMStudio server URL for mapping (e.g., http://localhost:1234)")
+        # 5. Azure Mapping
+        self.azure_mapping_frame = ctk.CTkFrame(self.map_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.azure_mapping_frame, text="Model:", width=70, anchor="w").pack(side="left", padx=(15, 0))
+        ctk.CTkEntry(self.azure_mapping_frame, textvariable=self.azure_mapping_model, width=150).pack(side="left", padx=5)
+        self.azure_map_params = self._create_azure_config_frame(self.azure_mapping_frame, "mapping")
+        self.azure_map_params.pack(fill="x", pady=5)
         
         # Save button
         save_btn = ctk.CTkButton(
-            frame,
+            container,
             text="Save Configuration",
+            font=ctk.CTkFont(size=14, weight="bold"),
             height=40,
             command=self._save_config_settings
         )
-        save_btn.pack(anchor="w", pady=(10, 0))
+        save_btn.pack(anchor="w", pady=(10, 20), padx=5)
+
+        # Initial frame update
+        self.update_translation_frames()
+        self.update_mapping_frames()
     
     def _create_api_keys_tab(self):
         """Create the API Keys tab."""
@@ -633,14 +786,40 @@ class SlideMobGUI(PowerpointPipeline):
             height=40,
             command=self._save_api_keys
         )
-        save_btn.pack(anchor="w", pady=(10, 0))
+        save_btn.pack(anchor="w", pady=(10, 0), padx=5)
     
     def _save_config_settings(self):
-        """Save configuration settings."""
-        self.translation_model = self.trans_model_entry.get()
-        self.mapping_model = self.map_model_entry.get()
-        self.translation_api_url = self.trans_url_entry.get()
-        self.mapping_api_url = self.map_url_entry.get()
+        """Save configuration settings by mapping provider-specific variables to main variables."""
+        # Mapping selected method's values to main class variables
+        trans_method = self.translation_method.get()
+        if trans_method == "OpenAI":
+            self.translation_model = self.openai_translation_model.get()
+        elif trans_method == "LMStudio":
+            self.translation_model = self.lmstudio_translation_model.get()
+            self.translation_api_url = self.translation_lmstudio_server.get()
+        elif trans_method == "HuggingFace":
+            self.translation_api_url = self.translation_huggingface_url.get()
+        elif trans_method == "DeepSeek":
+            self.translation_model = self.deepseek_translation_model.get()
+        elif trans_method == "Azure OpenAI":
+            self.translation_model = self.azure_translation_model.get()
+            # Pull URL from .env (Azure Endpoint)
+            self.translation_api_url = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+        
+        map_method = self.mapping_method.get()
+        if map_method == "OpenAI":
+            self.mapping_model = self.openai_mapping_model.get()
+        elif map_method == "LMStudio":
+            self.mapping_model = self.lmstudio_mapping_model.get()
+            self.mapping_api_url = self.mapping_lmstudio_server.get()
+        elif map_method == "HuggingFace":
+            self.mapping_api_url = self.mapping_huggingface_url.get()
+        elif map_method == "DeepSeek":
+            self.mapping_model = self.deepseek_mapping_model.get()
+        elif map_method == "Azure OpenAI":
+            self.mapping_model = self.azure_mapping_model.get()
+            self.mapping_api_url = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+
         self.save_gui_config(save_all=True)
         self._refresh_home_config()
         messagebox.showinfo("Saved", "Configuration saved successfully!")
@@ -663,7 +842,8 @@ class SlideMobGUI(PowerpointPipeline):
         return (
             f"Target Language: {self.gui_target_language.get()}\n"
             f"Strategy: {self.translation_strategy.get()}\n"
-            f"Translation: {self.translation_method.get()} | Mapping: {self.mapping_method.get()}\n"
+            f"Translation: {self.translation_method.get()} ({self.translation_model}) | "
+            f"Mapping: {self.mapping_method.get()} ({self.mapping_model})\n"
             f"Overwrite Original: {overwrite_status}"
         )
     
@@ -712,6 +892,8 @@ class SlideMobGUI(PowerpointPipeline):
         self.root.update()
         
         try:
+            # Refresh main variables from provider-specific ones before starting
+            self._save_config_settings()
             self.save_gui_config()
             
             path_manager = PathManager(
@@ -811,8 +993,8 @@ class SlideMobGUI(PowerpointPipeline):
         self.status_var.set("Stopping...")
     
     def open_settings(self):
-        settings_root = tk.Toplevel(self.root)
-        SettingsWindow(settings_root, self)
+        """Now redirects to the Configuration tab."""
+        self._switch_tab("config")
     
     def load_gui_config(self):
         try:
@@ -840,6 +1022,32 @@ class SlideMobGUI(PowerpointPipeline):
                 self.mapping_model = config.get("mapping_model", "gpt-4")
                 self.translation_api_url = config.get("translation_api_url", "http://localhost:1234")
                 self.mapping_api_url = config.get("mapping_api_url", "http://localhost:1234")
+                
+                # Provider specific
+                self.openai_translation_model.set(config.get("openai_translation_model", "gpt-4"))
+                self.lmstudio_translation_model.set(config.get("lmstudio_translation_model", "gpt-4"))
+                self.translation_lmstudio_server.set(config.get("translation_lmstudio_server", "http://localhost:1234"))
+                self.translation_huggingface_url.set(config.get("translation_huggingface_url", ""))
+                self.deepseek_translation_model.set(config.get("deepseek_translation_model", "deepseek-chat"))
+                self.azure_translation_model.set(config.get("azure_translation_model", "gpt-4"))
+                
+                self.openai_mapping_model.set(config.get("openai_mapping_model", "gpt-4o-mini"))
+                self.lmstudio_mapping_model.set(config.get("lmstudio_mapping_model", "gpt-4"))
+                self.mapping_lmstudio_server.set(config.get("mapping_lmstudio_server", "http://localhost:1234"))
+                self.mapping_huggingface_url.set(config.get("mapping_huggingface_url", ""))
+                self.deepseek_mapping_model.set(config.get("deepseek_mapping_model", "deepseek-chat"))
+                self.azure_mapping_model.set(config.get("azure_mapping_model", "gpt-4"))
+                
+                # Azure parameters
+                self.translation_temperature.set(config.get("translation_temperature", 0.7))
+                self.translation_frequency_penalty.set(config.get("translation_frequency_penalty", 0.0))
+                self.translation_presence_penalty.set(config.get("translation_presence_penalty", 0.0))
+                self.translation_max_tokens.set(config.get("translation_max_tokens", 2000))
+                
+                self.mapping_temperature.set(config.get("mapping_temperature", 0.7))
+                self.mapping_frequency_penalty.set(config.get("mapping_frequency_penalty", 0.0))
+                self.mapping_presence_penalty.set(config.get("mapping_presence_penalty", 0.0))
+                self.mapping_max_tokens.set(config.get("mapping_max_tokens", 2000))
         except Exception as e:
             print(f"Error loading GUI config: {e}")
     
@@ -869,6 +1077,32 @@ class SlideMobGUI(PowerpointPipeline):
                     "mapping_api_url": self.mapping_api_url,
                     "translation_strategy": self.translation_strategy.get(),
                     "overwrite_file": self.overwrite_file.get(),
+                    
+                    # Provider specific
+                    "openai_translation_model": self.openai_translation_model.get(),
+                    "lmstudio_translation_model": self.lmstudio_translation_model.get(),
+                    "translation_lmstudio_server": self.translation_lmstudio_server.get(),
+                    "translation_huggingface_url": self.translation_huggingface_url.get(),
+                    "deepseek_translation_model": self.deepseek_translation_model.get(),
+                    "azure_translation_model": self.azure_translation_model.get(),
+                    
+                    "openai_mapping_model": self.openai_mapping_model.get(),
+                    "lmstudio_mapping_model": self.lmstudio_mapping_model.get(),
+                    "mapping_lmstudio_server": self.mapping_lmstudio_server.get(),
+                    "mapping_huggingface_url": self.mapping_huggingface_url.get(),
+                    "deepseek_mapping_model": self.deepseek_mapping_model.get(),
+                    "azure_mapping_model": self.azure_mapping_model.get(),
+                    
+                    # Azure parameters
+                    "translation_temperature": self.translation_temperature.get(),
+                    "translation_frequency_penalty": self.translation_frequency_penalty.get(),
+                    "translation_presence_penalty": self.translation_presence_penalty.get(),
+                    "translation_max_tokens": self.translation_max_tokens.get(),
+                    
+                    "mapping_temperature": self.mapping_temperature.get(),
+                    "mapping_frequency_penalty": self.mapping_frequency_penalty.get(),
+                    "mapping_presence_penalty": self.mapping_presence_penalty.get(),
+                    "mapping_max_tokens": self.mapping_max_tokens.get(),
                 })
             else:
                 config.update({
