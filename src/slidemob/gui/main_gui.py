@@ -57,7 +57,7 @@ class SlideMobGUI(PowerpointPipeline):
         self.reduce_slides = tk.BooleanVar(value=False)
         self.merge_runs_var = tk.BooleanVar(value=False)
         self.overwrite_file = tk.BooleanVar(value=False)
-        self.translation_strategy = tk.StringVar(self.root, value="classic")
+        self.translation_strategy = tk.StringVar(self.root, value="")
         
         # Status variable
         self.status_var = tk.StringVar(value="Ready")
@@ -929,6 +929,26 @@ class SlideMobGUI(PowerpointPipeline):
                     messagebox.showerror("Error", f"Could not connect to LM Studio mapping server at {url}. Make sure LM Studio is running and the server is started.")
                     self.stop_processing()
                     return
+            
+            # Additional check for model name validity
+            import re
+            def is_valid_lm_model(m):
+                m_low = m.lower()
+                return any(x in m_low for x in ["gpt", "openai", "llama", "deepseek"]) and m_low != "unknown"
+
+            if self.translate_var.get() and self.translation_method.get() == "LMStudio":
+                model_name = self.lmstudio_translation_model.get()
+                if not is_valid_lm_model(model_name):
+                    messagebox.showerror("Error", f"Invalid translation model name: '{model_name}'.\n\nPlease ensure the model name is correctly copied from LM Studio and contains one of these keywords: gpt, openai, llama, or deepseek.")
+                    self.stop_processing()
+                    return
+
+            if self.mapping_method.get() == "LMStudio":
+                model_name = self.lmstudio_mapping_model.get()
+                if not is_valid_lm_model(model_name):
+                    messagebox.showerror("Error", f"Invalid mapping model name: '{model_name}'.\n\nPlease ensure the model name is correctly copied from LM Studio and contains one of these keywords: gpt, openai, llama, or deepseek.")
+                    self.stop_processing()
+                    return
         except Exception as e:
             messagebox.showerror("Error", f"Early connection check failed: {e}")
             self.stop_processing()
@@ -1062,7 +1082,7 @@ class SlideMobGUI(PowerpointPipeline):
                 self.translation_method.set(config.get("translation_method", "OpenAI"))
                 self.gui_style_instructions.set(config.get("style_instructions", ""))
                 self.mapping_method.set(config.get("mapping_method", "OpenAI"))
-                self.translation_strategy.set(config.get("translation_strategy", "classic"))
+                self.translation_strategy.set(config.get("translation_strategy", ""))
                 self.overwrite_file.set(config.get("overwrite_file", False))
                 
                 self.translation_model = config.get("translation_model", "gpt-4")
