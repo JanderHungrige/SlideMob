@@ -949,6 +949,10 @@ class SlideMobGUI(PowerpointPipeline):
                 target_language=self.gui_target_language.get(),
             )
             
+            # Sync internal pipeline attributes with the new config
+            self.pipeline_config = config
+            self.get_config()
+            
             if self.stop_requested:
                 raise Exception("Processing stopped by user")
             
