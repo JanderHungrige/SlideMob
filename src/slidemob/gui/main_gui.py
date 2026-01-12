@@ -179,6 +179,7 @@ class SlideMobGUI(PowerpointPipeline):
             ("translation", "Translation"),
             ("config", "Configuration"),
             ("api_keys", "API Keys"),
+            ("info", "Info"),
         ]
         
         for key, label in nav_items:
@@ -197,43 +198,6 @@ class SlideMobGUI(PowerpointPipeline):
             btn.pack(fill="x", padx=10, pady=5)
             self.nav_buttons[key] = btn
         
-        # Settings button at bottom of sidebar
-        self.settings_btn = ctk.CTkButton(
-            self.sidebar,
-            text="Settings",
-            font=ctk.CTkFont(size=14),
-            height=40,
-            corner_radius=8,
-            fg_color="transparent",
-            text_color=("gray70", "gray90"),
-            hover_color=("gray25", "gray25"),
-            anchor="w",
-            command=self.open_settings
-        )
-        self.settings_btn.pack(side="bottom", fill="x", padx=10, pady=(5, 5))
-        Tooltip(self.settings_btn, TOOLTIP_TEXTS["settings"])
-        
-        # Credit info at bottom
-        self.credit_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
-        self.credit_frame.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
-        
-        ctk.CTkLabel(
-            self.credit_frame,
-            text="Created by J. Werth",
-            font=ctk.CTkFont(size=11),
-            text_color="gray60"
-        ).pack()
-        
-        contact_link = ctk.CTkLabel(
-            self.credit_frame,
-            text="Contact (LinkedIn)",
-            font=ctk.CTkFont(size=11, underline=True),
-            text_color="#1E90FF",
-            cursor="hand2"
-        )
-        contact_link.pack()
-        contact_link.bind("<Button-1>", lambda e: webbrowser.open("https://www.linkedin.com/in/jan-werth/"))
-        
         # Content area
         self.content_area = ctk.CTkFrame(self.main_container, corner_radius=10)
         self.content_area.pack(side="right", fill="both", expand=True)
@@ -245,6 +209,7 @@ class SlideMobGUI(PowerpointPipeline):
         self._create_translation_tab()
         self._create_config_tab()
         self._create_api_keys_tab()
+        self._create_info_tab()
         
         # Show home tab by default
         self._switch_tab("home")
@@ -440,6 +405,55 @@ class SlideMobGUI(PowerpointPipeline):
         
         # Add some padding at bottom
         ctk.CTkFrame(options_frame, fg_color="transparent", height=15).pack()
+
+    def _create_info_tab(self):
+        """Create the Info tab with creator details."""
+        frame = ctk.CTkFrame(self.content_area, fg_color="transparent")
+        self.tab_frames["info"] = frame
+        
+        # Title
+        ctk.CTkLabel(
+            frame,
+            text="App Information",
+            font=ctk.CTkFont(size=28, weight="bold")
+        ).pack(anchor="w", pady=(0, 20))
+        
+        info_section = ctk.CTkFrame(frame, corner_radius=8)
+        info_section.pack(fill="x", pady=(0, 15))
+        
+        ctk.CTkLabel(
+            info_section,
+            text="Credits",
+            font=ctk.CTkFont(size=18, weight="bold")
+        ).pack(anchor="w", padx=15, pady=(15, 10))
+        
+        ctk.CTkLabel(
+            info_section,
+            text="Created by J. Werth",
+            font=ctk.CTkFont(size=14),
+            text_color="gray70"
+        ).pack(anchor="w", padx=15, pady=(0, 5))
+        
+        contact_link = ctk.CTkLabel(
+            info_section,
+            text="Contact (LinkedIn)",
+            font=ctk.CTkFont(size=14, underline=True),
+            text_color="#1E90FF",
+            cursor="hand2"
+        )
+        contact_link.pack(anchor="w", padx=15, pady=(0, 15))
+        contact_link.bind("<Button-1>", lambda e: webbrowser.open("https://www.linkedin.com/in/jan-werth/"))
+        
+        # Version or other info can go here
+        version_section = ctk.CTkFrame(frame, corner_radius=8)
+        version_section.pack(fill="x", pady=(0, 15))
+        
+        ctk.CTkLabel(
+            version_section,
+            text="Version: 1.2.0 (Modern UI)",
+            font=ctk.CTkFont(size=12),
+            text_color="gray50"
+        ).pack(padx=15, pady=10)
     
     def _check_lmstudio_connection(self, url: str) -> bool:
         """Verify that the LM Studio server is reachable."""
@@ -1058,10 +1072,6 @@ class SlideMobGUI(PowerpointPipeline):
     def stop_processing(self):
         self.stop_requested = True
         self.status_var.set("Stopping...")
-    
-    def open_settings(self):
-        """Now redirects to the Configuration tab."""
-        self._switch_tab("config")
     
     def load_gui_config(self):
         try:
