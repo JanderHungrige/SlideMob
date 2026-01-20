@@ -81,6 +81,39 @@ SlideMob is model-agnostic and supports various Large Language Model providers. 
 - Azure OpenAI: Enterprise-grade integration using your Azure endpoints.
 - Hugging Face: Connect to various open-source models hosted via Hugging Face Inference API.
 - LM Studio: Local model execution for maximum privacy and zero API costs.
+- Argos Translate: A fully offline, open-source translation library running locally on your device.
+
+## Argos Translate Setup (Offline Translation)
+
+SlideMob now includes support for fully offline translation using Argos Translate. This method runs entirely on your local machine and requires no internet connection after the initial setup.
+
+### Initial Setup
+1. Open SlideMob.
+2. Go to the **Configuration** tab.
+3. Select **Argos Translate** as the Translation Method.
+4. Click the **"Install/Update Language Packs"** button.
+5. This will automatically download and install the following language pairs (approx. 1GB download):
+   - English ↔ German
+   - English ↔ French
+   - English ↔ Spanish
+   - English ↔ Portuguese
+   - English ↔ Ukrainian
+   - German ↔ French
+   - German ↔ Ukrainian
+
+### Adding More Languages
+To add additional language pairs beyond the defaults:
+
+1. You can manually install packages using Python code or by extending the `install_argos_languages` method in `src/slidemob/core_functions/translator.py`.
+2. Alternatively, you can use the command line if you have `argostranslate` installed globally:
+   ```bash
+   argospm install from_code to_code
+   ```
+   For example, to add Italian to English:
+   ```bash
+   argospm install it en
+   ```
+3. Restart SlideMob after installing new languages.
 
 ## LM Studio Integration
 

@@ -3,7 +3,7 @@ import json
 from .path_manager import PathManager
 
 
-def create_config(path_manager: PathManager, target_language: str = "English", selected_slides: str = ""):
+def create_config(path_manager: PathManager, target_language: str = "English", selected_slides: str = "", source_language: str = "English"):
     config = {
         "root_folder": path_manager.project_root,
         "pptx_folder": path_manager.file_folder,
@@ -13,6 +13,7 @@ def create_config(path_manager: PathManager, target_language: str = "English", s
         "output_folder": path_manager.output_dir,
         "output_pptx": path_manager.output_pptx,
         "target_language": target_language,
+        "source_language": source_language,
         "selected_slides": selected_slides,
     }
 

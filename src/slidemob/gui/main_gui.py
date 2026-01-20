@@ -46,6 +46,7 @@ class SlideMobGUI(PowerpointPipeline):
         self.gui_pptx_path = tk.StringVar(self.root)
         self.gui_output_path = tk.StringVar(self.root)
         self.gui_target_language = ctk.StringVar(value="English")
+        self.gui_source_language = ctk.StringVar(value="English")
         self.gui_target_language.trace_add("write", lambda *args: self._refresh_sidebar_config())
         self.gui_style_instructions = ctk.StringVar(value="")
         self.translation_strategy = ctk.StringVar(value="")
@@ -66,6 +67,7 @@ class SlideMobGUI(PowerpointPipeline):
         
         # Status variable
         self.status_var = tk.StringVar(value="Ready")
+        self.argos_install_btn_text = tk.StringVar(value="Install Language Pair")
         
         # Provider-specific variables
         self.openai_translation_model = tk.StringVar(value="gpt-4")
@@ -97,6 +99,8 @@ class SlideMobGUI(PowerpointPipeline):
         self.azure_translation_model.trace_add("write", lambda *args: self._refresh_sidebar_config())
         self.azure_mapping_model.trace_add("write", lambda *args: self._refresh_sidebar_config())
         self.save_into_copy.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        self.gui_target_language.trace_add("write", lambda *args: self._refresh_argos_btn())
+        self.gui_source_language.trace_add("write", lambda *args: self._refresh_argos_btn())
         
         
         # Azure/Advanced parameters
@@ -605,7 +609,98 @@ class SlideMobGUI(PowerpointPipeline):
             font=ctk.CTkFont(size=12),
             text_color="gray50"
         ).pack(padx=15, pady=10)
+        
+    def _refresh_argos_btn(self):
+        """Update Argos install button text based on selection."""
+        source = self.gui_source_language.get()
+        target = self.gui_target_language.get()
+        self.argos_install_btn_text.set(f"Install {source} -> {target}")
+
+    def install_common_argos_packs(self):
+        """Install common Argos language packs."""
+        from ..core_functions.translator import SlideTranslator
+        
+        def run_install():
+            self.status_var.set("Installing common Argos languages...")
+            self.root.configure(cursor="watch")
+            try:
+                success = SlideTranslator.install_common_argos_languages()
+                self.root.after(0, lambda: self.status_var.set("Common languages installed!" if success else "Installation failed."))
+                if success:
+                    self.root.after(0, lambda: messagebox.showinfo("Success", "Common Argos language packs installed successfully."))
+                else:
+                    self.root.after(0, lambda: messagebox.showerror("Error", "Failed to install common language packs."))
+            except Exception as e:
+                self.root.after(0, lambda: messagebox.showerror("Error", f"Error installing languages: {e}"))
+            finally:
+                self.root.after(0, lambda: self.root.configure(cursor=""))
+                self.root.after(0, self._refresh_argos_info)
+        
+        threading.Thread(target=run_install, daemon=True).start()
+
+    def install_argos_languages_gui(self):
+        """Callback to install specific Argos language pair."""
+        from ..core_functions.translator import SlideTranslator
+        
+        source = self.gui_source_language.get()
+        target = self.gui_target_language.get()
+        
+        # Simple mapping for now, ideally reused from translator logic
+        # But for GUI button we just need codes.
+        # Assuming we can get codes from translator instance or just search list here.
+        # We need a way to get the code for the language name.
+        # We can create a temporary translator or access language list if available.
+        # translator.py has language_codes but it's an instance attribute.
+        # We can duplicate the logic or instantiate a dummy translator.
+        # Given we have json config...
+        
+        # Let's instantiate a dummy translator to get codes, or use hardcoded map for common ones?
+        # Better: use the static mapping data if possible.
+        # Actually SlideTranslator loads config_languages.json.
+        
+        def run_install():
+            self.status_var.set(f"Installing {source} -> {target}...")
+            self.root.configure(cursor="watch")
+            try:
+                # Helper to find code
+                translator = SlideTranslator() 
+                # This init might be heavy? It loads language codes.
+                
+                s_code = "en"
+                t_code = "en"
+                
+                for lang in translator.language_codes.get("languages", []):
+                    if lang["language"].lower().startswith(source.lower()):
+                         s_code = lang["code"].split('-')[0]
+                    if lang["language"].lower().startswith(target.lower()):
+                         t_code = lang["code"].split('-')[0]
+
+                success = SlideTranslator.install_argos_pair(s_code, t_code)
+                
+                self.root.after(0, lambda: self.status_var.set("Installation complete!" if success else "Installation failed."))
+                if success:
+                    self.root.after(0, lambda: messagebox.showinfo("Success", f"Installed {source} -> {target} ({s_code}->{t_code})"))
+                else:
+                    self.root.after(0, lambda: messagebox.showerror("Error", f"Failed to install {source} -> {target}"))
+            except Exception as e:
+                self.root.after(0, lambda: messagebox.showerror("Error", f"Error: {e}"))
+            finally:
+                self.root.after(0, lambda: self.root.configure(cursor=""))
+                self.root.after(0, self._refresh_argos_info)
+        
+        threading.Thread(target=run_install, daemon=True).start()
     
+    def _refresh_argos_info(self):
+        """Update the label showing installed Argos languages."""
+        from ..core_functions.translator import SlideTranslator
+        if hasattr(self, 'argos_installed_label'):
+            installed = SlideTranslator.get_installed_argos_languages()
+            if installed:
+                text = "Installed pairs: " + ", ".join(installed)
+            else:
+                text = "No language packs installed yet."
+            self.argos_installed_label.configure(text=text)
+
     def _check_lmstudio_connection(self, url: str) -> bool:
         """Verify that the LM Studio server is reachable."""
         try:
@@ -732,6 +827,7 @@ class SlideMobGUI(PowerpointPipeline):
             self.huggingface_translation_frame,
             self.deepseek_translation_frame,
             self.azure_translation_frame,
+            self.argos_translation_frame,
         ]:
             frame.pack_forget()
 
@@ -746,6 +842,9 @@ class SlideMobGUI(PowerpointPipeline):
             self.deepseek_translation_frame.pack(fill="x", padx=10, pady=5)
         elif method == "Azure OpenAI":
             self.azure_translation_frame.pack(fill="x", padx=10, pady=5)
+        elif method == "Argos Translate":
+            self.argos_translation_frame.pack(fill="x", padx=10, pady=5)
+            self._refresh_argos_info()
 
     def update_mapping_frames(self, *args):
         """Show the appropriate frame based on selected mapping method."""
@@ -797,7 +896,7 @@ class SlideMobGUI(PowerpointPipeline):
         trans_main.columnconfigure(1, weight=1)
         
         # Method Selection
-        trans_methods = ["OpenAI", "DeepSeek", "Azure OpenAI", "HuggingFace", "LMStudio"]
+        trans_methods = ["OpenAI", "DeepSeek", "Azure OpenAI", "HuggingFace", "LMStudio", "Argos Translate"]
         ctk.CTkLabel(trans_main, text="Method:").grid(row=1, column=0, padx=(15, 10), pady=10, sticky="w")
         trans_dropdown = ctk.CTkComboBox(
             trans_main,
@@ -840,6 +939,45 @@ class SlideMobGUI(PowerpointPipeline):
         ctk.CTkEntry(self.azure_translation_frame, textvariable=self.azure_translation_model, width=150).pack(side="left", padx=5)
         self.azure_trans_params = self._create_azure_config_frame(self.azure_translation_frame, "translation")
         self.azure_trans_params.pack(fill="x", pady=5)
+        
+        # 6. Argos Translate
+        self.argos_translation_frame = ctk.CTkFrame(self.trans_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.argos_translation_frame, text="Local offline translation using Argos Translate.", text_color="gray60").pack(anchor="w", padx=15)
+        ctk.CTkLabel(self.argos_translation_frame, text="Source Language:", width=100, anchor="w").pack(side="left", padx=(15, 0))
+        self.argos_source_dropdown = ctk.CTkComboBox(
+            self.argos_translation_frame, 
+            values=self.language_options, 
+            variable=self.gui_source_language,
+            width=200
+        )
+        self.argos_source_dropdown.pack(side="left", padx=(5, 15))
+
+        self.argos_install_btn = ctk.CTkButton(
+            self.argos_translation_frame, 
+            textvariable=self.argos_install_btn_text,
+            command=self.install_argos_languages_gui
+        )
+        self.argos_install_btn.pack(side="left", padx=5)
+        
+        self.argos_common_btn = ctk.CTkButton(
+            self.argos_translation_frame,
+            text="Install Common Packs",
+            width=150,
+            fg_color="gray50",
+            hover_color="gray40",
+            command=self.install_common_argos_packs
+        )
+        self.argos_common_btn.pack(side="left", padx=5)
+        
+        self.argos_installed_label = ctk.CTkLabel(
+            self.argos_translation_frame, 
+            text="Checking installed packs...",
+            text_color="gray50",
+            font=ctk.CTkFont(size=11),
+            wraplength=500,
+            justify="left"
+        )
+        self.argos_installed_label.pack(anchor="w", padx=15, pady=(0, 10))
         
         # --- Mapping Settings Section ---
         map_main = ctk.CTkFrame(container, corner_radius=8)
@@ -1037,6 +1175,8 @@ class SlideMobGUI(PowerpointPipeline):
             trans_model = f"DS:{self.deepseek_translation_model.get()}"
         elif trans_method == "Azure OpenAI":
             trans_model = f"Azure:{self.azure_translation_model.get()}"
+        elif trans_method == "Argos Translate":
+            trans_model = "Argos (Local)"
         else:
             trans_model = "HF"
 
@@ -1225,12 +1365,12 @@ class SlideMobGUI(PowerpointPipeline):
         # Start processing in a separate thread
         thread = threading.Thread(
             target=self._run_processing_thread,
-            args=(pptx_path, output_path, overwrite, target_lang, style_instr, slide_selection)
+            args=(pptx_path, output_path, overwrite, target_lang, style_instr, slide_selection, self.gui_source_language.get())
         )
         thread.daemon = True
         thread.start()
 
-    def _run_processing_thread(self, pptx_path, output_path, overwrite, target_lang, style_instr, slide_selection):
+    def _run_processing_thread(self, pptx_path, output_path, overwrite, target_lang, style_instr, slide_selection, source_lang=None):
         """Core processing logic to be run in a separate thread."""
         try:
             path_manager = PathManager(
@@ -1241,7 +1381,8 @@ class SlideMobGUI(PowerpointPipeline):
             config = create_config(
                 path_manager=path_manager,
                 target_language=target_lang,
-                selected_slides=slide_selection
+                selected_slides=slide_selection,
+                source_language=source_lang
             )
             
             # Sync internal pipeline attributes with the new config

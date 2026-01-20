@@ -23,6 +23,7 @@ openai = "^1.60.0"
 lxml = "^5.3.0"
 googletrans = "^4.0.2"
 langdetect = "^1.0.9"
+argostranslate = "^1.9.0"
 
 [tool.poetry.group.dev.dependencies]
 jupytext = "^1.16.1"

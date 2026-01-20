@@ -11,6 +11,13 @@ from openai import AzureOpenAI
 from pydantic import BaseModel
 import requests
 
+try:
+    import argostranslate.package
+    import argostranslate.translate
+    HAS_ARGOS = True
+except ImportError:
+    HAS_ARGOS = False
+
 from ..utils.promts import (
     mapping_prompt_deepseek,
     mapping_prompt_llama2,
@@ -128,6 +135,10 @@ class SlideTranslator:
                         )
                     elif self.translation_method == "Azure OpenAI":
                         translated_text = self.translate_text_azure_openai(
+                            self.original_text
+                        )
+                    elif self.translation_method == "Argos Translate":
+                        translated_text = self.translate_text_argostranslate(
                             self.original_text
                         )
 
@@ -497,13 +508,161 @@ class SlideTranslator:
                 max_tokens=model_cfg["max_tokens_out"],
             )
 
-            if not response:
-                return text
-
             return response.choices[0].message.content.strip()
 
         except Exception as e:
             print(f"Error in Azure OpenAI translation: {e}")
+            return text
+
+    @staticmethod
+    def install_argos_languages():
+        """Install requested Argos Translate packages."""
+        if not HAS_ARGOS:
+            print("Error: argostranslate is not installed. Cannot install language packs.")
+            return False
+        try:
+            argostranslate.package.update_package_index()
+            available_packages = argostranslate.package.get_available_packages()
+            
+            # Requested pairs:
+            # english <-> german
+            # english <-> french
+            # german <-> french
+            # english <-> ukrainian
+            # german <-> ukrainian
+            # english <-> spanish
+            # english <-> portuguese
+            
+            # Map common names to ISO codes if needed, or check Argos definitions
+            # Argos uses ISO 639-1 (e.g. 'en', 'de', 'fr', 'uk', 'es', 'pt')
+            
+            pairs_to_install = [
+                ('en', 'de'), ('de', 'en'),
+                ('en', 'fr'), ('fr', 'en'),
+                ('de', 'fr'), ('fr', 'de'),
+                ('en', 'uk'), ('uk', 'en'),
+                ('de', 'uk'), ('uk', 'de'),
+                ('en', 'es'), ('es', 'en'),
+                ('en', 'pt'), ('pt', 'en'),
+            ]
+            
+            installed_count = 0
+            for from_code, to_code in pairs_to_install:
+                package_to_install = next(
+                    filter(
+                        lambda x: x.from_code == from_code and x.to_code == to_code,
+                        available_packages
+                    ),
+                    None
+                )
+                if package_to_install:
+                    if package_to_install in argostranslate.package.get_installed_packages():
+                        print(f"Argos package {from_code}->{to_code} already installed.")
+                    else:
+                        print(f"Installing Argos package {from_code}->{to_code}...")
+                        package_to_install.install()
+                        installed_count += 1
+                else:
+                    print(f"Warning: Argos package {from_code}->{to_code} not found.")
+
+            print(f"Argos Translate setup complete. Installed {installed_count} new packages.")
+            return True
+        except Exception as e:
+            print(f"Error installing Argos languages: {e}")
+            traceback.print_exc()
+            return False
+
+    @staticmethod
+    def install_argos_pair(from_code: str, to_code: str):
+        """Install a specific Argos Translate language pair."""
+        if not HAS_ARGOS:
+            return False
+        try:
+            argostranslate.package.update_package_index()
+            available_packages = argostranslate.package.get_available_packages()
+            package_to_install = next(
+                filter(
+                    lambda x: x.from_code == from_code and x.to_code == to_code,
+                    available_packages
+                ),
+                None
+            )
+            if package_to_install:
+                if package_to_install in argostranslate.package.get_installed_packages():
+                    print(f"Argos package {from_code}->{to_code} already installed.")
+                    return True
+                else:
+                    print(f"Installing Argos package {from_code}->{to_code}...")
+                    package_to_install.install()
+                    return True
+            else:
+                print(f"Warning: Argos package {from_code}->{to_code} not found.")
+                return False
+        except Exception as e:
+            print(f"Error installing Argos pair {from_code}->{to_code}: {e}")
+            return False
+
+    @staticmethod
+    def install_common_argos_languages():
+        """Install common requested Argos Translate packages."""
+        return SlideTranslator.install_argos_languages()
+
+    @staticmethod
+    def get_installed_argos_languages():
+        """Get a list of installed Argos Translate language pairs."""
+        if not HAS_ARGOS:
+            return []
+        try:
+            installed_packages = argostranslate.package.get_installed_packages()
+            return [f"{p.from_code} -> {p.to_code}" for p in installed_packages]
+        except Exception as e:
+            print(f"Error getting installed Argos languages: {e}")
+            return []
+
+    def translate_text_argostranslate(self, text: str) -> str:
+        """Translate text using local Argos Translate."""
+        if not HAS_ARGOS:
+            if self.verbose:
+                print("Warning: Argos Translate not available (module missing).")
+            return text
+        try:
+            # Map target language to code
+            # We assume self.target_language is a full name or similar, we need code.
+            # Using self.language_codes to find the code.
+            
+            target_lang_code = "en"
+            for lang in self.language_codes.get("languages", []):
+                if lang["language"].lower().startswith(self.target_language.lower()):
+                    target_lang_code = lang["code"].split('-')[0] # Get 'de' from 'de-DE'
+                    break
+            
+            # Determine source language
+            from_code = 'en'
+            
+            # Use explicitly provided source language if available in config
+            if hasattr(self, 'config') and 'source_language' in self.config:
+                 source_lang = self.config['source_language']
+                 # Map source name to code
+                 for lang in self.language_codes.get("languages", []):
+                    if lang["language"].lower().startswith(source_lang.lower()):
+                        from_code = lang["code"].split('-')[0]
+                        break
+
+            if from_code == target_lang_code:
+                return text
+
+            # Perform translation
+            try:
+                translated_text = argostranslate.translate.translate(text, from_code, target_lang_code)
+                return translated_text
+            except Exception as e:
+                # If direct translation unavailable, maybe pivot through English? 
+                # Or just fail gracefully.
+                # print(f"Argos translation failed for {from_code}->{target_lang_code}: {e}")
+                return text
+
+        except Exception as e:
+            print(f"Argos Translate critical error: {e}")
             return text
 
     def _parse_json_response(self, content: str) -> dict:
@@ -530,6 +689,9 @@ class SlideTranslator:
         self, original_text_elements: set, translated_text: str, translation_map: dict
     ) -> dict:
         """Create a mapping between original text and their translations."""
+        # Optimization: If there's only one text element, map 1:1 directly.
+        if len(original_text_elements) == 1:
+            return {next(iter(original_text_elements)): translated_text}
         try:
             if self.mapping_method == "OpenAI" or self.mapping_method == "Azure OpenAI":
                 prompt = mapping_prompt_openai(

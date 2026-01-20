@@ -18,14 +18,16 @@ added_files = [
 ]
 
 # Add external dependencies mappings if needed
-# added_files += collect_data_files('some_package')
+added_files += collect_data_files('argostranslate')
+added_files += collect_data_files('ctranslate2')
+added_files += collect_data_files('stanza')
 
 a = Analysis(
     [os.path.join(project_root, 'src/slidemob/__main__.py')],
     pathex=[os.path.join(project_root, 'src')],
     binaries=[],
     datas=added_files,
-    hiddenimports=['ttkthemes', 'customtkinter', 'darkdetect', 'PIL._tkinter_finder', 'dotenv', 'slidemob.gui.settings_window', 'slidemob.utils.model_settings'],
+    hiddenimports=['ttkthemes', 'customtkinter', 'darkdetect', 'PIL._tkinter_finder', 'dotenv', 'slidemob.gui.settings_window', 'slidemob.utils.model_settings', 'argostranslate', 'ctranslate2', 'stanza', 'sentencepiece'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
