@@ -17,6 +17,12 @@ added_files = [
     (os.path.join(project_root, 'src/slidemob/gui/assets'), 'slidemob/gui/assets'),
 ]
 
+# Add Argos language packs if they exist
+argos_packs_source = os.path.join(os.path.expanduser("~"), ".local/share/argos-translate/packages")
+if os.path.exists(argos_packs_source):
+    # Map them to 'argos-translate/packages' inside the bundle
+    added_files.append((argos_packs_source, 'argos-translate/packages'))
+
 # Add external dependencies mappings if needed
 added_files += collect_data_files('argostranslate')
 added_files += collect_data_files('ctranslate2')

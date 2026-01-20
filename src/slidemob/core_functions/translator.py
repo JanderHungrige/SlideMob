@@ -10,8 +10,16 @@ from lxml import etree as ET
 from openai import AzureOpenAI
 from pydantic import BaseModel
 import requests
+import sys
 
 try:
+    # Handle bundled packages for PyInstaller before importing argostranslate
+    if getattr(sys, 'frozen', False):
+        # Look for bundled packages in the _internal/argos-translate/packages dir
+        bundled_packages_path = os.path.join(sys._MEIPASS, 'argos-translate/packages')
+        if os.path.exists(bundled_packages_path):
+            os.environ['ARGOS_TRANSLATE_PACKAGES_DIR'] = bundled_packages_path
+            
     import argostranslate.package
     import argostranslate.translate
     HAS_ARGOS = True
