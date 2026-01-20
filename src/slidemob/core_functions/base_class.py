@@ -95,15 +95,61 @@ class PowerpointPipeline:
         if self.verbose:
             print(f"\tOutput folder: {self.output_folder}")
 
+    @staticmethod
+    def parse_slide_selection(selection_str: str) -> set[int]:
+        """Parse a slide selection string (e.g., '1,3,5-7,12') into a set of slide numbers."""
+        if not selection_str or not selection_str.strip():
+            return set()
+            
+        selected_slides = set()
+        parts = selection_str.replace(" ", "").split(",")
+        
+        for part in parts:
+            if "-" in part:
+                try:
+                    start, end = map(int, part.split("-"))
+                    selected_slides.update(range(start, end + 1))
+                except ValueError:
+                    continue
+            else:
+                try:
+                    selected_slides.add(int(part))
+                except ValueError:
+                    continue
+                    
+        return selected_slides
+
     def find_slide_files(self) -> list[str]:
-        """Find all slide XML files in the folder structure."""
+        """Find all slide XML files in the folder structure, filtered by selected slides if applicable."""
         slide_files = []
+        
+        # Get selected slides from config if they exist
+        selection_str = self.config.get("selected_slides", "")
+        selected_slides = self.parse_slide_selection(selection_str)
+        
         for root, _, files in os.walk(self.extract_path):
             for file in files:
                 if file.startswith("slide") and file.endswith(".xml"):
                     number_part = file[5:-4]
                     if number_part.isdigit():
-                        slide_files.append(os.path.join(root, file))
+                        slide_num = int(number_part)
+                        if not selected_slides or slide_num in selected_slides:
+                            slide_files.append(os.path.join(root, file))
+        
+        # Verify if all selected slides exist
+        if selected_slides:
+            all_slide_nums = set()
+            for root, _, files in os.walk(self.extract_path):
+                for file in files:
+                    if file.startswith("slide") and file.endswith(".xml"):
+                        num = file[5:-4]
+                        if num.isdigit():
+                            all_slide_nums.add(int(num))
+            
+            missing_slides = selected_slides - all_slide_nums
+            if missing_slides:
+                print(f"Warning: The following selected slides do not exist: {sorted(list(missing_slides))}")
+
         return sorted(slide_files)
 
     def extract_paragraphs(self, xml_file: str) -> list[ET.Element]:

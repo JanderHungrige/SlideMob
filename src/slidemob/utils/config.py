@@ -3,7 +3,7 @@ import json
 from .path_manager import PathManager
 
 
-def create_config(path_manager: PathManager, target_language: str = "English"):
+def create_config(path_manager: PathManager, target_language: str = "English", selected_slides: str = ""):
     config = {
         "root_folder": path_manager.project_root,
         "pptx_folder": path_manager.file_folder,
@@ -13,6 +13,7 @@ def create_config(path_manager: PathManager, target_language: str = "English"):
         "output_folder": path_manager.output_dir,
         "output_pptx": path_manager.output_pptx,
         "target_language": target_language,
+        "selected_slides": selected_slides,
     }
 
     # In frozen app, we cannot write to the config path (sys._MEIPASS)

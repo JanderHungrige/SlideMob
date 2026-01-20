@@ -5,9 +5,10 @@ from ..core_functions.translator import SlideTranslator
 
 
 class PowerPointTranslator:
-    def __init__(self, progress_callback=None, stop_check_callback=None, pipeline_config: dict = None):
+    def __init__(self, progress_callback=None, stop_check_callback=None, log_callback=None, pipeline_config: dict = None):
         self.progress_callback = progress_callback
         self.stop_check_callback = stop_check_callback
+        self.log_callback = log_callback
         self.pipeline_config = pipeline_config
 
     def translate_presentation(self):
@@ -23,7 +24,7 @@ class PowerPointTranslator:
             # Get namespaces
             namespaces = self.settings.get_namespace()
             success = self.translator.process_slides(
-                self.progress_callback, self.stop_check_callback
+                self.progress_callback, self.stop_check_callback, self.log_callback
             )
             if not success:
                 return False

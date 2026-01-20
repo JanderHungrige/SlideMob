@@ -31,6 +31,7 @@ pyright = "==1.1.365"
 ruff = "==0.3.4"
 types-pyyaml = "^6.0.12.11"
 pyinstaller = "^6.3.0"
+dmgbuild = "^1.6.7"
 
 [tool.poetry.group.docs.dependencies]
 mkdocstrings = {extras = ["python"], version = "^0.24.3"}  # API doc generation

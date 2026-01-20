@@ -7,6 +7,7 @@ from tkinter import filedialog, messagebox
 import traceback
 import webbrowser
 import requests
+import threading
 
 import customtkinter as ctk
 
@@ -44,8 +45,11 @@ class SlideMobGUI(PowerpointPipeline):
         # Initialize tk variables
         self.gui_pptx_path = tk.StringVar(self.root)
         self.gui_output_path = tk.StringVar(self.root)
-        self.gui_target_language = tk.StringVar(self.root, value="English")
-        self.gui_style_instructions = tk.StringVar(self.root)
+        self.gui_target_language = ctk.StringVar(value="English")
+        self.gui_target_language.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        self.gui_style_instructions = ctk.StringVar(value="")
+        self.translation_strategy = ctk.StringVar(value="")
+        self.translation_strategy.trace_add("write", lambda *args: self._refresh_sidebar_config())
         self.translation_method = tk.StringVar(self.root, value="OpenAI")
         self.mapping_method = tk.StringVar(self.root, value="OpenAI")
         
@@ -56,8 +60,9 @@ class SlideMobGUI(PowerpointPipeline):
         self.update_language = tk.BooleanVar(value=False)
         self.reduce_slides = tk.BooleanVar(value=False)
         self.merge_runs_var = tk.BooleanVar(value=False)
-        self.overwrite_file = tk.BooleanVar(value=False)
+        self.save_into_copy = tk.BooleanVar(value=True)
         self.translation_strategy = tk.StringVar(self.root, value="")
+        self.gui_slide_selection = tk.StringVar(self.root, value="")
         
         # Status variable
         self.status_var = tk.StringVar(value="Ready")
@@ -76,6 +81,23 @@ class SlideMobGUI(PowerpointPipeline):
         self.mapping_huggingface_url = tk.StringVar(value="")
         self.deepseek_mapping_model = tk.StringVar(value="deepseek-chat")
         self.azure_mapping_model = tk.StringVar(value="gpt-4")
+
+        # Traces
+        self.gui_slide_selection.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        
+        # Method traces for summary
+        self.translation_method.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        self.mapping_method.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        self.openai_translation_model.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        self.openai_mapping_model.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        self.lmstudio_translation_model.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        self.lmstudio_mapping_model.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        self.deepseek_translation_model.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        self.deepseek_mapping_model.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        self.azure_translation_model.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        self.azure_mapping_model.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        self.save_into_copy.trace_add("write", lambda *args: self._refresh_sidebar_config())
+        
         
         # Azure/Advanced parameters
         self.translation_temperature = tk.DoubleVar(value=0.7)
@@ -132,10 +154,24 @@ class SlideMobGUI(PowerpointPipeline):
             company_image = Image.open(company_path)
             company_image = company_image.resize((80, 40), Image.Resampling.LANCZOS)
             self.company_logo = ctk.CTkImage(light_image=company_image, dark_image=company_image, size=(80, 40))
+
+            # Load contact avatars
+            avatar_size = (100, 100)
+            self.avatars = {}
+            for name in ["jan", "martin", "taras"]:
+                try:
+                    path = get_resource_path(f"slidemob/images/{name}_avatar.png")
+                    img = Image.open(path)
+                    img = img.resize(avatar_size, Image.Resampling.LANCZOS)
+                    self.avatars[name] = ctk.CTkImage(light_image=img, dark_image=img, size=avatar_size)
+                except Exception as e:
+                    print(f"Warning: Could not load {name} avatar: {e}")
+                    self.avatars[name] = None
         except Exception as e:
             print(f"Warning: Could not load images: {e}")
             self.app_logo = None
             self.company_logo = None
+            self.avatars = {}
     
     def _update_pptx_path(self, *args):
         self.pptx_path = self.gui_pptx_path.get()
@@ -150,9 +186,22 @@ class SlideMobGUI(PowerpointPipeline):
         self.main_container.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Left sidebar for navigation
-        self.sidebar = ctk.CTkFrame(self.main_container, width=180, corner_radius=10)
+        self.sidebar_visible = True
+        self.sidebar = ctk.CTkFrame(self.main_container, corner_radius=10)
         self.sidebar.pack(side="left", fill="y", padx=(0, 10))
-        self.sidebar.pack_propagate(False)
+        
+        # Sidebar toggle button (small button that stays visible)
+        self.toggle_btn = ctk.CTkButton(
+            self.main_container,
+            text="☰",
+            width=30,
+            height=30,
+            fg_color="transparent",
+            text_color=("gray10", "gray90"),
+            hover_color=("gray25", "gray25"),
+            command=self._toggle_sidebar
+        )
+        self.toggle_btn.place(x=5, y=5)
         
         # App title in sidebar
         self.title_label = ctk.CTkLabel(
@@ -210,6 +259,26 @@ class SlideMobGUI(PowerpointPipeline):
         self._create_config_tab()
         self._create_api_keys_tab()
         self._create_info_tab()
+        
+        # Add Configuration Summary section at the bottom of sidebar
+        summary_separator = ctk.CTkFrame(self.sidebar, height=1, fg_color="gray30")
+        summary_separator.pack(fill="x", padx=10, pady=(20, 10))
+        
+        ctk.CTkLabel(
+            self.sidebar,
+            text="CURRENT CONFIG",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="gray50"
+        ).pack(anchor="w", padx=20)
+        
+        self.sidebar_config_label = ctk.CTkLabel(
+            self.sidebar,
+            text=self._get_config_summary(),
+            font=ctk.CTkFont(size=11),
+            text_color="gray50",
+            justify="left"
+        )
+        self.sidebar_config_label.pack(anchor="w", padx=20, pady=(5, 20))
         
         # Show home tab by default
         self._switch_tab("home")
@@ -314,6 +383,28 @@ class SlideMobGUI(PowerpointPipeline):
         )
         output_browse_btn.pack(side="right")
         
+        # Slide Selection Section
+        slide_section = ctk.CTkFrame(frame, corner_radius=8)
+        slide_section.pack(fill="x", pady=(0, 15))
+        
+        ctk.CTkLabel(
+            slide_section,
+            text="Slide Selection (Optional)",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(anchor="w", padx=15, pady=(15, 5))
+        
+        slide_row = ctk.CTkFrame(slide_section, fg_color="transparent")
+        slide_row.pack(fill="x", padx=15, pady=(0, 15))
+        
+        self.slide_entry = ctk.CTkEntry(
+            slide_row,
+            textvariable=self.gui_slide_selection,
+            placeholder_text="e.g., 1,3,5-7,12",
+            height=40
+        )
+        self.slide_entry.pack(fill="x", expand=True)
+        Tooltip(self.slide_entry, TOOLTIP_TEXTS["slide_selection"])
+        
         # Action Buttons
         action_frame = ctk.CTkFrame(frame, fg_color="transparent")
         action_frame.pack(fill="x", pady=(20, 0))
@@ -343,24 +434,26 @@ class SlideMobGUI(PowerpointPipeline):
         self.stop_btn.pack(side="right")
         Tooltip(self.stop_btn, TOOLTIP_TEXTS["stop"])
         
-        # Current Configuration Summary
-        config_section = ctk.CTkFrame(frame, corner_radius=8)
-        config_section.pack(fill="x", pady=(20, 0))
+        # Live Processing Log
+        log_section = ctk.CTkFrame(frame, corner_radius=8)
+        log_section.pack(fill="both", expand=True, pady=(20, 0))
         
         ctk.CTkLabel(
-            config_section,
-            text="Current Configuration",
+            log_section,
+            text="Processing Log",
             font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(anchor="w", padx=15, pady=(15, 10))
+        ).pack(anchor="w", padx=15, pady=(15, 5))
         
-        self.home_config_label = ctk.CTkLabel(
-            config_section,
-            text=self._get_config_summary(),
-            font=ctk.CTkFont(size=12),
-            text_color="gray60",
-            justify="left"
+        self.log_textbox = ctk.CTkTextbox(
+            log_section,
+            font=ctk.CTkFont(family="Courier", size=12),
+            corner_radius=5,
+            border_width=1,
+            fg_color=("#f8f9fa", "#1a1a1a"),
+            text_color=("black", "gray80")
         )
-        self.home_config_label.pack(anchor="w", padx=15, pady=(0, 15))
+        self.log_textbox.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+        self.log_textbox.configure(state="disabled")
     
     def _create_processing_tab(self):
         """Create the Processing tab with all processing options."""
@@ -386,7 +479,7 @@ class SlideMobGUI(PowerpointPipeline):
             ("translate_var", "Translate Content", "translate"),
             ("update_language", "Update PPTX Language", "update_language"),
             ("reduce_slides", "Reduce Slides", "reduce_slides"),
-            ("overwrite_file", "Overwrite Original File", "overwrite"),
+            ("save_into_copy", "Save into Copy", "overwrite"),
         ]
         
         for var_name, label, tooltip_key in options:
@@ -407,7 +500,7 @@ class SlideMobGUI(PowerpointPipeline):
         ctk.CTkFrame(options_frame, fg_color="transparent", height=15).pack()
 
     def _create_info_tab(self):
-        """Create the Info tab with creator details."""
+        """Create the Info tab with uniform contact details for the team."""
         frame = ctk.CTkFrame(self.content_area, fg_color="transparent")
         self.tab_frames["info"] = frame
         
@@ -418,31 +511,89 @@ class SlideMobGUI(PowerpointPipeline):
             font=ctk.CTkFont(size=28, weight="bold")
         ).pack(anchor="w", pady=(0, 20))
         
-        info_section = ctk.CTkFrame(frame, corner_radius=8)
-        info_section.pack(fill="x", pady=(0, 15))
+        # Team Section container
+        team_container = ctk.CTkFrame(frame, fg_color="transparent")
+        team_container.pack(fill="x", pady=(0, 20), padx=10)
         
-        ctk.CTkLabel(
-            info_section,
-            text="Credits",
-            font=ctk.CTkFont(size=18, weight="bold")
-        ).pack(anchor="w", padx=15, pady=(15, 10))
+        # Configure 3 equal-width columns that stay uniform regardless of content size
+        # Using grid_columnconfigure individually to ensure uniform group is applied correctly
+        for i in range(3):
+            team_container.grid_columnconfigure(i, weight=1, uniform="team_columns")
         
-        ctk.CTkLabel(
-            info_section,
-            text="Created by J. Werth",
-            font=ctk.CTkFont(size=14),
-            text_color="gray70"
-        ).pack(anchor="w", padx=15, pady=(0, 5))
+        team_members = [
+            {
+                "id": "taras",
+                "name": "Taras",
+                "company": "Lead Developer",
+                "linkedin": "https://www.linkedin.com/",
+            },
+            {
+                "id": "martin",
+                "name": "Martin",
+                "company": "Technical Architect",
+                "linkedin": "https://www.linkedin.com/",
+            },
+            {
+                "id": "jan",
+                "name": "Jan Werth",
+                "company": "Product Owner",
+                "linkedin": "https://www.linkedin.com/in/jan-werth/",
+            }
+        ]
         
-        contact_link = ctk.CTkLabel(
-            info_section,
-            text="Contact (LinkedIn)",
-            font=ctk.CTkFont(size=14, underline=True),
-            text_color="#1E90FF",
-            cursor="hand2"
-        )
-        contact_link.pack(anchor="w", padx=15, pady=(0, 15))
-        contact_link.bind("<Button-1>", lambda e: webbrowser.open("https://www.linkedin.com/in/jan-werth/"))
+        for idx, member in enumerate(team_members):
+            # The "White Box" (Contact Card)
+            card = ctk.CTkFrame(
+                team_container, 
+                corner_radius=12,
+                fg_color=("#ffffff", "#2b2b2b"), # Light mode white, dark mode gray
+                border_width=1,
+                border_color=("gray80", "gray30")
+            )
+            card.grid(row=0, column=idx, padx=10, sticky="nsew")
+            
+            # Sub-elements
+            # Avatar
+            avatar_img = self.avatars.get(member["id"])
+            if avatar_img:
+                avatar_label = ctk.CTkLabel(card, image=avatar_img, text="")
+                avatar_label.pack(pady=(20, 10))
+            else:
+                # Placeholder circle
+                ctk.CTkLabel(
+                    card, 
+                    text=member["name"][0], 
+                    font=ctk.CTkFont(size=30, weight="bold"),
+                    width=100,
+                    height=100,
+                    corner_radius=50,
+                    fg_color="gray40"
+                ).pack(pady=(20, 10))
+            
+            # Name
+            ctk.CTkLabel(
+                card,
+                text=member["name"],
+                font=ctk.CTkFont(size=18, weight="bold")
+            ).pack(pady=(5, 0))
+            
+            # Company/Role
+            ctk.CTkLabel(
+                card,
+                text=member["company"],
+                font=ctk.CTkFont(size=14),
+                text_color="gray60"
+            ).pack(pady=(0, 15))
+            
+            # LinkedIn Button
+            linked_in_btn = ctk.CTkButton(
+                card,
+                text="LinkedIn",
+                height=30,
+                width=100,
+                command=lambda url=member["linkedin"]: webbrowser.open(url)
+            )
+            linked_in_btn.pack(pady=(0, 20))
         
         # Version or other info can go here
         version_section = ctk.CTkFrame(frame, corner_radius=8)
@@ -855,7 +1006,7 @@ class SlideMobGUI(PowerpointPipeline):
             self.mapping_api_url = os.getenv("AZURE_OPENAI_ENDPOINT", "")
 
         self.save_gui_config(save_all=True)
-        self._refresh_home_config()
+        self._refresh_sidebar_config()
         if show_message:
             messagebox.showinfo("Saved", "Configuration saved successfully!")
     
@@ -872,20 +1023,85 @@ class SlideMobGUI(PowerpointPipeline):
         messagebox.showinfo("Saved", "API keys saved successfully!")
     
     def _get_config_summary(self) -> str:
-        """Generate a summary of current configuration for display."""
-        overwrite_status = "Yes" if self.overwrite_file.get() else "No"
+        """Generate a compact summary of current configuration for display."""
+        lang = self.gui_target_language.get()
+        strategy = self.translation_strategy.get() or "None"
+        
+        # Get active models
+        trans_method = self.translation_method.get()
+        if trans_method == "OpenAI":
+            trans_model = self.openai_translation_model.get()
+        elif trans_method == "LMStudio":
+            trans_model = f"LMS:{self.lmstudio_translation_model.get()}"
+        elif trans_method == "DeepSeek":
+            trans_model = f"DS:{self.deepseek_translation_model.get()}"
+        elif trans_method == "Azure OpenAI":
+            trans_model = f"Azure:{self.azure_translation_model.get()}"
+        else:
+            trans_model = "HF"
+
+        map_method = self.mapping_method.get()
+        if map_method == "OpenAI":
+            map_model = self.openai_mapping_model.get()
+        elif map_method == "LMStudio":
+            map_model = f"LMS:{self.lmstudio_mapping_model.get()}"
+        elif map_method == "DeepSeek":
+            map_model = f"DS:{self.deepseek_mapping_model.get()}"
+        elif map_method == "Azure OpenAI":
+            map_model = f"Azure:{self.azure_mapping_model.get()}"
+        else:
+            map_model = "HF"
+
+        into_copy = "Yes" if self.save_into_copy.get() else "No"
+        slides = self.gui_slide_selection.get() or "All"
+        
         return (
-            f"Target Language: {self.gui_target_language.get()}\n"
-            f"Strategy: {self.translation_strategy.get()}\n"
-            f"Translation: {self.translation_method.get()} ({self.translation_model}) | "
-            f"Mapping: {self.mapping_method.get()} ({self.mapping_model})\n"
-            f"Overwrite Original: {overwrite_status}"
+            f"Language: {lang}\n"
+            f"Strategy: {strategy}\n"
+            f"Trans: {trans_model}\n"
+            f"Map: {map_model}\n"
+            f"Slides: {slides}\n"
+            f"Save into Copy: {into_copy}"
         )
+
+    def _toggle_sidebar(self):
+        """Toggle sidebar visibility."""
+        if self.sidebar_visible:
+            self.sidebar.pack_forget()
+            self.sidebar_visible = False
+            self.toggle_btn.configure(text="☰")
+            # Move toggle button to corner
+            self.toggle_btn.place(x=5, y=5)
+        else:
+            self.sidebar.pack(side="left", fill="y", padx=(0, 10), before=self.content_area)
+            self.sidebar_visible = True
+            self.toggle_btn.configure(text="✕")
+            # Move toggle button to stay visible or inside sidebar
+            self.toggle_btn.place(x=5, y=5)
     
-    def _refresh_home_config(self):
-        """Refresh the config summary on the Home tab."""
-        if hasattr(self, 'home_config_label'):
-            self.home_config_label.configure(text=self._get_config_summary())
+    def _refresh_sidebar_config(self):
+        """Refresh the config summary on the sidebar."""
+        if hasattr(self, 'sidebar_config_label'):
+            self.sidebar_config_label.configure(text=self._get_config_summary())
+
+    def _log_to_gui(self, original, transformed):
+        """Callback to log processing steps to the Home tab textbox."""
+        if hasattr(self, 'log_textbox'):
+            def update():
+                self.log_textbox.configure(state="normal")
+                self.log_textbox.insert("end", f"--- {original[:30]}... ---\n")
+                self.log_textbox.insert("end", f"→ {transformed}\n\n")
+                self.log_textbox.see("end")
+                self.log_textbox.configure(state="disabled")
+            
+            self.root.after(0, update)
+
+    def _clear_log(self):
+        """Clear the log textbox."""
+        if hasattr(self, 'log_textbox'):
+            self.log_textbox.configure(state="normal")
+            self.log_textbox.delete("1.0", "end")
+            self.log_textbox.configure(state="disabled")
     
     # -------------------------------------------------------------------------
     # Core Methods (kept from original)
@@ -912,8 +1128,7 @@ class SlideMobGUI(PowerpointPipeline):
             self.save_gui_config()
     
     def update_translation_progress(self, slide_name, current, total):
-        self.status_var.set(f"Translating slide {current} of {total} ({slide_name})")
-        self.root.update()
+        self.root.after(0, lambda: self.status_var.set(f"Translating slide {current} of {total} ({slide_name})"))
     
     def process_presentation(self):
         if not self.gui_pptx_path.get() or not self.gui_output_path.get():
@@ -924,9 +1139,8 @@ class SlideMobGUI(PowerpointPipeline):
         self.stop_requested = False
         self.process_btn.configure(state="disabled")
         self.stop_btn.configure(state="normal")
-        self.root.update()
         
-        # Connection Checks
+        # Connection Checks (still on main thread for immediate feedback)
         try:
             # Check translation method
             if self.translate_var.get() and self.translation_method.get() == "LMStudio":
@@ -968,19 +1182,66 @@ class SlideMobGUI(PowerpointPipeline):
             self.stop_processing()
             return
 
+        # Prepare settings on main thread
+        self._save_config_settings(show_message=False)
+        self.save_gui_config()
+        self._refresh_sidebar_config()
+        self._clear_log()
+        
+        # Collect values needed for PathManager and config
+        pptx_path = self.gui_pptx_path.get()
+        output_path = self.gui_output_path.get()
+        overwrite = not self.save_into_copy.get()
+        target_lang = self.gui_target_language.get()
+        style_instr = self.gui_style_instructions.get()
+        slide_selection = self.gui_slide_selection.get().strip()
+        
+        # Validate slide selection if provided
+        if slide_selection:
+            try:
+                import zipfile
+                with zipfile.ZipFile(pptx_path, 'r') as z:
+                    slide_files = [f for f in z.namelist() if f.startswith("ppt/slides/slide") and f.endswith(".xml")]
+                    all_slide_nums = set()
+                    for f in slide_files:
+                        num_part = f[len("ppt/slides/slide"):-4]
+                        if num_part.isdigit():
+                            all_slide_nums.add(int(num_part))
+                
+                selected_nums = PowerpointPipeline.parse_slide_selection(slide_selection)
+                invalid_nums = selected_nums - all_slide_nums
+                
+                if invalid_nums:
+                    messagebox.showerror(
+                        "Invalid Slide Selection",
+                        f"The following slide numbers do not exist in the presentation: {sorted(list(invalid_nums))}\n"
+                        f"Total slides available: {len(all_slide_nums)}"
+                    )
+                    self.stop_processing()
+                    return
+            except Exception as e:
+                print(f"Warning: Could not pre-validate slide selection: {e}")
+
+        # Start processing in a separate thread
+        thread = threading.Thread(
+            target=self._run_processing_thread,
+            args=(pptx_path, output_path, overwrite, target_lang, style_instr, slide_selection)
+        )
+        thread.daemon = True
+        thread.start()
+
+    def _run_processing_thread(self, pptx_path, output_path, overwrite, target_lang, style_instr, slide_selection):
+        """Core processing logic to be run in a separate thread."""
         try:
-            # Refresh main variables from provider-specific ones before starting (silently)
-            self._save_config_settings(show_message=False)
-            self.save_gui_config()
-            
             path_manager = PathManager(
-                self.gui_pptx_path.get(),
-                self.gui_output_path.get(),
-                overwrite=self.overwrite_file.get()
+                pptx_path,
+                output_path,
+                overwrite=overwrite
             )
             config = create_config(
                 path_manager=path_manager,
-                target_language=self.gui_target_language.get(),
+                target_language=target_lang,
+                selected_slides=slide_selection
             )
             
             # Sync internal pipeline attributes with the new config
@@ -991,8 +1252,7 @@ class SlideMobGUI(PowerpointPipeline):
                 raise Exception("Processing stopped by user")
             
             if self.extract_var.get():
-                self.status_var.set("Extracting PPTX...")
-                self.root.update()
+                self.root.after(0, lambda: self.status_var.set("Extracting PPTX..."))
                 success = self.extract_pptx()
                 if not success:
                     raise Exception("Extraction failed")
@@ -1001,11 +1261,11 @@ class SlideMobGUI(PowerpointPipeline):
                 raise Exception("Processing stopped by user")
             
             if self.polish_var.get():
-                self.status_var.set("Polishing content...")
-                self.root.update()
+                self.root.after(0, lambda: self.status_var.set("Polishing content..."))
                 polisher = PowerPointPolisher(
-                    Further_StyleInstructions=self.gui_style_instructions.get(),
+                    Further_StyleInstructions=style_instr,
                     fresh_extract=not self.extract_var.get(),
+                    log_callback=self._log_to_gui,
                     pipeline_config=config,
                 )
                 success = polisher.polish_presentation()
@@ -1016,11 +1276,11 @@ class SlideMobGUI(PowerpointPipeline):
                 raise Exception("Processing stopped by user")
             
             if self.translate_var.get():
-                self.status_var.set("Starting translation...")
-                self.root.update()
+                self.root.after(0, lambda: self.status_var.set("Starting translation..."))
                 translator = PowerPointTranslator(
                     progress_callback=self.update_translation_progress,
                     stop_check_callback=lambda: self.stop_requested,
+                    log_callback=self._log_to_gui,
                     pipeline_config=config,
                 )
                 success = translator.translate_presentation()
@@ -1033,8 +1293,7 @@ class SlideMobGUI(PowerpointPipeline):
                 raise Exception("Processing stopped by user")
             
             if self.merge_runs_var.get():
-                self.status_var.set("Merging similar runs...")
-                self.root.update()
+                self.root.after(0, lambda: self.status_var.set("Merging similar runs..."))
                 merger = PowerPointRunMerger(
                     fresh_extract=not (
                         self.extract_var.get()
@@ -1047,7 +1306,7 @@ class SlideMobGUI(PowerpointPipeline):
                 if not success:
                     raise Exception("Run merging failed")
             
-            self.status_var.set("Processing complete!")
+            self.root.after(0, lambda: self.status_var.set("Processing complete!"))
             
             output_file = path_manager.output_pptx
             output_folder = path_manager.output_dir
@@ -1057,17 +1316,20 @@ class SlideMobGUI(PowerpointPipeline):
                 f"Filename: {os.path.basename(output_file)}\n"
                 f"Folder: {output_folder}"
             )
-            messagebox.showinfo("Success", success_msg)
+            self.root.after(0, lambda: messagebox.showinfo("Success", success_msg))
         
         except Exception as e:
-            self.status_var.set(f"Error: {e!s}")
-            messagebox.showerror("Error", f"An error occurred: {e!s}")
-            logging.exception("Error in process_presentation")
+            error_msg = str(e)
+            self.root.after(0, lambda msg=error_msg: self.status_var.set(f"Error: {msg}"))
+            self.root.after(0, lambda msg=error_msg: messagebox.showerror("Error", f"An error occurred: {msg}"))
+            logging.exception("Error in process_presentation thread")
         
         finally:
-            self.processing = False
-            self.process_btn.configure(state="normal")
-            self.stop_btn.configure(state="disabled")
+            def reset_ui():
+                self.processing = False
+                self.process_btn.configure(state="normal")
+                self.stop_btn.configure(state="disabled")
+            self.root.after(0, reset_ui)
     
     def stop_processing(self):
         self.stop_requested = True
@@ -1093,7 +1355,15 @@ class SlideMobGUI(PowerpointPipeline):
                 self.gui_style_instructions.set(config.get("style_instructions", ""))
                 self.mapping_method.set(config.get("mapping_method", "OpenAI"))
                 self.translation_strategy.set(config.get("translation_strategy", ""))
-                self.overwrite_file.set(config.get("overwrite_file", False))
+                
+                # Handle legacy overwrite_file
+                if "save_into_copy" in config:
+                    self.save_into_copy.set(config.get("save_into_copy", True))
+                elif "overwrite_file" in config:
+                    # Invert old overwrite logic: Overwrite=True -> SaveIntoCopy=False
+                    self.save_into_copy.set(not config.get("overwrite_file"))
+                else:
+                    self.save_into_copy.set(True)
                 
                 self.translation_model = config.get("translation_model", "gpt-4")
                 self.mapping_model = config.get("mapping_model", "gpt-4")
@@ -1153,7 +1423,7 @@ class SlideMobGUI(PowerpointPipeline):
                     "translation_api_url": self.translation_api_url,
                     "mapping_api_url": self.mapping_api_url,
                     "translation_strategy": self.translation_strategy.get(),
-                    "overwrite_file": self.overwrite_file.get(),
+                    "save_into_copy": self.save_into_copy.get(),
                     
                     # Provider specific
                     "openai_translation_model": self.openai_translation_model.get(),
@@ -1210,8 +1480,8 @@ class SlideMobGUI(PowerpointPipeline):
                 self.mapping_api_url = value
             elif key == "translation_strategy":
                 self.translation_strategy.set(value)
-            elif key == "overwrite_file":
-                self.overwrite_file.set(value)
+            elif key == "save_into_copy":
+                self.save_into_copy.set(value)
         
         # Update display
         if hasattr(self, 'config_info_label'):

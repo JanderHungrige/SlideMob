@@ -7,11 +7,12 @@ from ..core_functions.polisher import SlidePolisher
 
 class PowerPointPolisher(PowerpointPipeline):
     def __init__(
-        self, Further_StyleInstructions: str = "None", fresh_extract: bool = True, pipeline_config: dict = None
+        self, Further_StyleInstructions: str = "None", fresh_extract: bool = True, log_callback=None, pipeline_config: dict = None
     ):
         super().__init__(pipeline_config=pipeline_config)
 
         self.fresh_extract = fresh_extract
+        self.log_callback = log_callback
         # Initialize transformer and translator
         self.polisher = SlidePolisher(Further_StyleInstructions)
 
@@ -27,7 +28,7 @@ class PowerPointPolisher(PowerpointPipeline):
             self.polisher.namespaces = namespaces
 
             # Process slides
-            self.polisher.process_slides(self.extract_path)
+            self.polisher.process_slides(self.extract_path, self.log_callback)
 
             # Compose final PPTX
             # output_path = os.path.join(self.output_folder, self.output_pptx_name)

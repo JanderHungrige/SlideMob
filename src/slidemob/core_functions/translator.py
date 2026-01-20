@@ -109,9 +109,6 @@ class SlideTranslator:
                 # Check if the text is only a number (float or integer) with optional spaces
                 if re.match(r"^\s*-?\d*\.?\d+\s*$", self.original_text):
                     translated_text = self.original_text
-                    # Update translation map for the current original text
-                    if self.original_text in translation_map:
-                        translation_map[self.original_text] = translated_text
                 else:
                     if self.translation_method == "OpenAI":
                         translated_text = self.translate_text_OpenAI(self.original_text)
@@ -137,6 +134,9 @@ class SlideTranslator:
                     if self.verbose:
                         print(f"\tOriginal paragraph: {self.original_text}")
                         print(f"\tTranslated paragraph: {translated_text}\n")
+                    
+                    if hasattr(self, 'log_callback') and self.log_callback:
+                        self.log_callback(self.original_text, translated_text)
                     
                     # Filter candidates to only those that appear in the current paragraph
                     # This reduces context noise and hallucinations
@@ -759,8 +759,9 @@ class SlideTranslator:
             print(traceback.format_exc())
             return "en-US"  # default to en-US on error
 
-    def process_slides(self, progress_callback=None, stop_check_callback=None):
+    def process_slides(self, progress_callback=None, stop_check_callback=None, log_callback=None):
         """Main function to process all slides in the presentation."""
+        self.log_callback = log_callback
         slide_files = self.find_slide_files()
         selected_slides = ["slide2.xml", "slide3.xml", "slide4.xml"]
         total_slides = len(slide_files)

@@ -138,6 +138,9 @@ class SlidePolisher(PowerpointPipeline):
                 print(f"\tOriginal paragraph: {original_text}")
                 print(f"\tPolished paragraph: {polished_text}\n")
 
+                if hasattr(self, 'log_callback') and self.log_callback:
+                    self.log_callback(original_text, polished_text)
+
                 prompt = f"""Match each original text segment with its corresponding part from the polished text.
                 Original segments: {[text for text in original_text_elements]}
                 Full original text: {original_text}
@@ -174,8 +177,9 @@ class SlidePolisher(PowerpointPipeline):
         print(f"\tMapping: {polish_mapping}")
         return polish_mapping
 
-    def process_slides(self, folder_path: str):
+    def process_slides(self, folder_path: str, log_callback=None):
         """Main function to process all slides in the presentation."""
+        self.log_callback = log_callback
         slide_files = self.find_slide_files(folder_path)
 
         for slide_file in slide_files:

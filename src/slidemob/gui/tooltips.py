@@ -67,7 +67,7 @@ TOOLTIP_TEXTS = {
     "translate": "Translates all text content to your target language while preserving formatting.",
     "update_language": "Updates PowerPoint's internal language metadata to match the translated content.",
     "reduce_slides": "Optimizes processing by identifying and handling redundant slide elements.",
-    "overwrite": "If checked, overwrites the original file. Otherwise, creates a new file with '_slidemobbed' suffix.",
+    "overwrite": "If checked, creates a new file with '_slidemobbed' suffix. Otherwise, overwrites the original file.",
     
     # Translation Settings
     "target_language": "Select the language you want to translate your presentation into.",
@@ -79,4 +79,5 @@ TOOLTIP_TEXTS = {
     "process": "Start processing the PowerPoint file with the selected options.",
     "stop": "Stop the current processing operation.",
     "settings": "Open settings to configure API keys and model preferences.",
+    "slide_selection": "Specify which slides to process. Use commas for separate slides and hyphens for ranges (e.g., '1,3,5-7,12'). Leave empty to process all slides.",
 }

@@ -24,6 +24,29 @@ def main():
     try:
         subprocess.run(cmd, cwd=project_root, check=True)
         print(f"Build successful! Executable can be found in the 'dist/' folder.")
+
+        if args.platform == "mac":
+            print("Creating DMG...")
+            dmg_settings = os.path.join(project_root, "dmg_settings.py")
+            dmg_name = "SlideMob.dmg"
+            dmg_path = os.path.join(project_root, "dist", dmg_name)
+
+            # Ensure any existing DMG is removed
+            if os.path.exists(dmg_path):
+                os.remove(dmg_path)
+
+            dmg_cmd = [
+                sys.executable,
+                "-m",
+                "dmgbuild",
+                "-s",
+                dmg_settings,
+                "SlideMob",
+                dmg_path,
+            ]
+            subprocess.run(dmg_cmd, cwd=project_root, check=True)
+            print(f"DMG created successfully: {dmg_path}")
+
     except subprocess.CalledProcessError as e:
         print(f"Build failed with error: {e}")
         sys.exit(1)
