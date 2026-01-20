@@ -640,7 +640,9 @@ class SlideTranslator:
             
             target_lang_code = "en"
             for lang in self.language_codes.get("languages", []):
-                if lang["language"].lower().startswith(self.target_language.lower()):
+                # Match against the base name (before parenthesis) which is what GUI uses
+                base_name = lang["language"].split(" (")[0]
+                if base_name.lower() == self.target_language.lower():
                     target_lang_code = lang["code"].split('-')[0] # Get 'de' from 'de-DE'
                     break
             
@@ -652,7 +654,8 @@ class SlideTranslator:
                  source_lang = self.config['source_language']
                  # Map source name to code
                  for lang in self.language_codes.get("languages", []):
-                    if lang["language"].lower().startswith(source_lang.lower()):
+                    base_name = lang["language"].split(" (")[0]
+                    if base_name.lower() == source_lang.lower():
                         from_code = lang["code"].split('-')[0]
                         break
 

@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import tkinter as tk
+import multiprocessing
 
 from openai import OpenAI
 
@@ -81,8 +82,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-
-
-if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()

@@ -1488,6 +1488,7 @@ class SlideMobGUI(PowerpointPipeline):
                 self.gui_pptx_path.set(config.get("pptx_path", ""))
                 self.gui_output_path.set(config.get("output_path", ""))
                 self.gui_target_language.set(config.get("target_language", "English"))
+                self.gui_source_language.set(config.get("source_language", "English"))
                 self.extract_var.set(config.get("extract_pptx", True))
                 self.merge_runs_var.set(config.get("pre_merge", False))
                 self.polish_var.set(config.get("polish_content", False))
@@ -1558,6 +1559,7 @@ class SlideMobGUI(PowerpointPipeline):
                     "update_language": self.update_language.get(),
                     "reduce_slides": self.reduce_slides.get(),
                     "target_language": self.gui_target_language.get(),
+                    "source_language": self.gui_source_language.get(),
                     "translation_method": self.translation_method.get(),
                     "mapping_method": self.mapping_method.get(),
                     "style_instructions": self.gui_style_instructions.get(),
