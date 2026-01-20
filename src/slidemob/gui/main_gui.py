@@ -631,7 +631,8 @@ class SlideMobGUI(PowerpointPipeline):
                 else:
                     self.root.after(0, lambda: messagebox.showerror("Error", "Failed to install common language packs."))
             except Exception as e:
-                self.root.after(0, lambda: messagebox.showerror("Error", f"Error installing languages: {e}"))
+                err_msg = str(e)
+                self.root.after(0, lambda msg=err_msg: messagebox.showerror("Error", f"Error installing languages: {msg}"))
             finally:
                 self.root.after(0, lambda: self.root.configure(cursor=""))
                 self.root.after(0, self._refresh_argos_info)
@@ -683,7 +684,8 @@ class SlideMobGUI(PowerpointPipeline):
                 else:
                     self.root.after(0, lambda: messagebox.showerror("Error", f"Failed to install {source} -> {target}"))
             except Exception as e:
-                self.root.after(0, lambda: messagebox.showerror("Error", f"Error: {e}"))
+                err_msg = str(e)
+                self.root.after(0, lambda msg=err_msg: messagebox.showerror("Error", f"Error: {msg}"))
             finally:
                 self.root.after(0, lambda: self.root.configure(cursor=""))
                 self.root.after(0, self._refresh_argos_info)
