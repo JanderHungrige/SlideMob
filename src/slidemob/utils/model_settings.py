@@ -40,12 +40,32 @@ class ModelSettings:
         self.translation_model = self.gui_config.get("translation_model", "gpt-4")
         self.mapping_method = self.gui_config.get("mapping_method", "OpenAI")
         self.mapping_model = self.gui_config.get("mapping_model", "gpt-4")
-        self.translation_api_url = self.gui_config.get(
-            "translation_api_url", "http://localhost:1234"
-        )
-        self.mapping_api_url = self.gui_config.get(
-            "mapping_api_url", "http://localhost:1234"
-        )
+        # Load translation API URL based on translation method
+        if self.translation_method == "LMStudio":
+            self.translation_api_url = self.gui_config.get(
+                "translation_lmstudio_server", "http://localhost:1234"
+            )
+        elif self.translation_method == "HuggingFace":
+            self.translation_api_url = self.gui_config.get(
+                "translation_huggingface_url", ""
+            )
+        else:
+            self.translation_api_url = self.gui_config.get(
+                "translation_api_url", "http://localhost:1234"
+            )
+        # Load mapping API URL based on mapping method
+        if self.mapping_method == "LMStudio":
+            self.mapping_api_url = self.gui_config.get(
+                "mapping_lmstudio_server", "http://localhost:1234"
+            )
+        elif self.mapping_method == "HuggingFace":
+            self.mapping_api_url = self.gui_config.get(
+                "mapping_huggingface_url", ""
+            )
+        else:
+            self.mapping_api_url = self.gui_config.get(
+                "mapping_api_url", "http://localhost:1234"
+            )
         self.reduce_slides = self.gui_config.get("reduce_slides", False)
         self.style_instructions = self.gui_config.get("style_instructions", "")
         self.update_language = self.gui_config.get("update_language", False)
