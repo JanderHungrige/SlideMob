@@ -46,7 +46,10 @@ class PowerpointPipeline:
         self.extract_path = self.config["extract_folder"]
         self.output_folder = self.config["output_folder"]
         self.output_pptx = self.config["output_pptx"]
-        self.target_language = self.config["target_language"]
+        self.target_language = self.config.get("target_language", "English")
+        # Debug: Verify target_language is set correctly
+        if self.verbose:
+            print(f"[DEBUG] PowerpointPipeline.target_language set to: '{self.target_language}'")
 
         self.extract_namespaces = self.extract_namespaces
         self.namespaces = self.namespaces
@@ -266,18 +269,51 @@ class PowerpointPipeline:
 
     def compose_pptx(self, source_path: str, output_pptx: str):
         """Compose a PPTX file from a directory containing the XML structure."""
-        self.extract_path
+        # Verify source_path exists and contains files
+        if not os.path.exists(source_path):
+            print(f"[ERROR] Source path does not exist: {source_path}")
+            return False
+        
+        # Debug: Check if slide XML files exist and have recent modifications
+        slide_files = []
+        for root, _, files in os.walk(source_path):
+            for file in files:
+                if file.startswith("slide") and file.endswith(".xml"):
+                    slide_files.append(os.path.join(root, file))
+        
+        if self.verbose:
+            print(f"\n[DEBUG] Composing PPTX from: {source_path}")
+            print(f"[DEBUG] Found {len(slide_files)} slide XML files")
+            # Check a sample slide file to verify it has content
+            if slide_files:
+                sample_file = slide_files[0]
+                try:
+                    import xml.etree.ElementTree as ET
+                    tree = ET.parse(sample_file)
+                    root = tree.getroot()
+                    # Check for text elements
+                    text_elems = root.findall(".//{http://schemas.openxmlformats.org/drawingml/2006/main}t")
+                    sample_texts = [elem.text[:30] for elem in text_elems[:3] if elem.text]
+                    print(f"[DEBUG] Sample slide file '{os.path.basename(sample_file)}' contains {len(text_elems)} text elements")
+                    if sample_texts:
+                        print(f"[DEBUG] Sample texts: {sample_texts}")
+                except Exception as e:
+                    print(f"[DEBUG] Could not read sample slide: {e}")
 
-        os.makedirs(os.path.dirname(self.output_pptx), exist_ok=True)
+        os.makedirs(os.path.dirname(output_pptx), exist_ok=True)
         try:
             with zipfile.ZipFile(
                 output_pptx, "w", compression=zipfile.ZIP_DEFLATED
             ) as zf:
+                file_count = 0
                 for root, _, files in os.walk(source_path):
                     for file in files:
                         file_path = os.path.join(root, file)
                         arcname = os.path.relpath(file_path, source_path)
                         zf.write(file_path, arcname)
+                        file_count += 1
+                if self.verbose:
+                    print(f"[DEBUG] Composed PPTX with {file_count} files -> {output_pptx}")
         except Exception as e:
             print(f"Error composing PPTX: {e}")
             print("Full traceback:")

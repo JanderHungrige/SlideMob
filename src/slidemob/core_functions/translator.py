@@ -113,6 +113,11 @@ class SlideTranslator:
     ) -> dict:
         """Create a mapping between original text and their translations."""
         translation_map = {text: "" for text in original_text_elements}
+        
+        # Debug: Log target language
+        if self.verbose:
+            print(f"\t[DEBUG] Creating translation map with target_language: '{self.target_language}'")
+            print(f"\t[DEBUG] Original text elements to translate: {list(original_text_elements)[:5]}...")
         for element in text_elements:
             if element.text is not None:
                 self.original_text = element.text.strip()
@@ -839,13 +844,34 @@ class SlideTranslator:
             for orig_text, trans_text in segment_mappings.items():
                 if orig_text in translation_map:
                     translation_map[orig_text] = trans_text
+            
+            # Fallback: If mapping failed or is incomplete, and we have only one candidate,
+            # apply the full translation to it
+            if not segment_mappings and len(original_text_elements) == 1:
+                single_text = next(iter(original_text_elements))
+                if single_text in translation_map:
+                    translation_map[single_text] = translated_text
+                    if self.verbose:
+                        print(f"\tApplied fallback mapping: '{single_text}' -> '{translated_text}'")
 
         except Exception as e:
             print(f"\tError matching segments for translation map: {e}")
             print("Full traceback:")
             print(traceback.format_exc())
+            # Fallback: If mapping completely fails, try to apply translation to the full text
+            if len(original_text_elements) == 1:
+                single_text = next(iter(original_text_elements))
+                if single_text in translation_map and not translation_map[single_text]:
+                    translation_map[single_text] = translated_text
+                    if self.verbose:
+                        print(f"\tApplied error fallback mapping: '{single_text}' -> '{translated_text}'")
+        
         if self.verbose:
             print(f"\tTranslation map: {translation_map}")
+            # Log any unmapped entries
+            unmapped = [k for k, v in translation_map.items() if not v or v.strip() == ""]
+            if unmapped:
+                print(f"\tWarning: {len(unmapped)} text elements have no translation: {unmapped[:5]}...")
         return translation_map
 
     def translate_paragraph_with_markers(self, p_element: ET.Element):
@@ -905,6 +931,65 @@ class SlideTranslator:
             print(f"Error in marker-based translation: {e}")
             traceback.print_exc()
 
+    def _get_element_xpath(self, element, root):
+        """Get a unique XPath-like identifier for an element."""
+        # Build a simple path based on parent chain
+        parts = []
+        current = element
+        while current is not None and current != root:
+            parent = current.getparent()
+            if parent is None:
+                break
+            # Get index among siblings
+            siblings = parent.findall(current.tag, self.namespaces)
+            try:
+                index = siblings.index(current)
+                parts.append(f"{current.tag}[{index}]")
+            except (ValueError, AttributeError):
+                parts.append(current.tag)
+            current = parent
+        return "/".join(reversed(parts)) if parts else element.tag
+
+    def _extract_text_runs_from_tree(self, root):
+        """Extract text elements from an already-parsed XML tree (not from file)."""
+        text_elements = []
+        original_text_elements = set()
+
+        # Create a backup with the original text elements
+        for paragraph in root.findall(".//a:p", self.namespaces):
+            for run in paragraph.findall(".//a:r", self.namespaces):
+                for original_text_element in run.findall(".//a:t", self.namespaces):
+                    if (
+                        original_text_element.text
+                        and original_text_element.text.strip()
+                    ):
+                        original_text_elements.add(original_text_element.text.strip())
+
+        # Process paragraphs while preserving structure
+        for paragraph in root.findall(".//a:p", self.namespaces):
+            text_parts = []
+            lang = None
+            for text_element in paragraph.findall(".//a:t", self.namespaces):
+                run_props = text_element.find(".//a:rPr", self.namespaces)
+                if run_props is not None:
+                    lang = run_props.get("lang", "en-GB")
+                if text_element.text and text_element.text.strip():
+                    text_parts.append(text_element.text.strip())
+
+            if text_parts:
+                # Use a valid tag name for lxml. Prefix 'a' is for DrawingML namespace.
+                # Clark notation: {http://schemas.openxmlformats.org/drawingml/2006/main}t
+                text_element = ET.Element("{http://schemas.openxmlformats.org/drawingml/2006/main}t")
+                text_element.text = " ".join(text_parts)
+                text_element.set("lang", lang or "en-GB")
+                text_elements.append(text_element)
+
+        if self.verbose:
+            print("Text elements found:")
+            for element in text_elements[:5]:  # Show first 5
+                print(f"- {element.text.strip()[:50]} | lang: {element.get('lang')}")
+        return text_elements, original_text_elements
+
     def detect_pptx_language(self, text: str) -> str:
         """Detect language and return PowerPoint language code."""
         # Handle empty or whitespace-only text
@@ -935,8 +1020,13 @@ class SlideTranslator:
     def process_slides(self, progress_callback=None, stop_check_callback=None, log_callback=None):
         """Main function to process all slides in the presentation."""
         self.log_callback = log_callback
+        
+        # Debug: Verify target language is set correctly
+        print(f"\n[DEBUG] SlideTranslator initialized with target_language: '{self.target_language}'")
+        if not self.target_language or self.target_language == "English":
+            print(f"[WARNING] Target language is '{self.target_language}' - translations may not be applied!")
+        
         slide_files = self.find_slide_files()
-        selected_slides = ["slide2.xml", "slide3.xml", "slide4.xml"]
         total_slides = len(slide_files)
 
         for slide_file in sorted(slide_files):
@@ -944,10 +1034,6 @@ class SlideTranslator:
             if stop_check_callback and stop_check_callback():
                 print("\nProcessing stopped by user")
                 return False
-
-            if self.reduce_slides:
-                if os.path.basename(slide_file) not in selected_slides:
-                    continue
 
             current_slide = slide_files.index(slide_file) + 1
             if progress_callback:
@@ -985,24 +1071,57 @@ class SlideTranslator:
                 if self.verbose:
                     print(f"\tUsing classic translation strategy")
                 # Extract and create translation mapping
-                text_elements, original_text_elements = self.extract_text_runs(slide_file)
+                # IMPORTANT: Extract from the already-parsed tree, not by re-reading the file
+                # This ensures we're working with the current state of the XML
+                text_elements, original_text_elements = self._extract_text_runs_from_tree(root)
+                if self.verbose:
+                    print(f"\tFound {len(text_elements)} text elements and {len(original_text_elements)} original text pieces")
                 translation_map = self.create_translation_map(
                     text_elements, original_text_elements
                 )
+                if self.verbose:
+                    non_empty = sum(1 for v in translation_map.values() if v and v.strip())
+                    print(f"\tTranslation map has {non_empty}/{len(translation_map)} non-empty translations")
 
                 # Update text while preserving XML structure and whitespace
+                # Track which elements have been updated to avoid double-processing
+                # Use XPath-based tracking instead of id() for reliability
+                updated_xpaths = set()
+                total_updates = 0
+                
                 for original_text, translation in translation_map.items():
                     # Check for stop request during translation updates
                     if stop_check_callback and stop_check_callback():
                         print("\nProcessing stopped by user")
                         return False
 
-                    if translation == None:  # Skip empty translations
+                    # Skip empty or None translations
+                    if not translation or translation.strip() == "":
+                        if self.verbose:
+                            print(f"\tSkipping empty translation for: '{original_text}'")
                         continue
-                    # Update Text
+                    
+                    # Update Text - find matching elements
+                    found_match = False
                     for element in root.findall(".//a:t", self.namespaces):
-                        if element.text and element.text.strip() == original_text:
-                            if translation.strip():  # If we have a valid translation
+                        # Get XPath for this element to track updates reliably
+                        try:
+                            element_xpath = self._get_element_xpath(element, root)
+                        except:
+                            element_xpath = None
+                        
+                        # Skip if already updated
+                        if element_xpath and element_xpath in updated_xpaths:
+                            continue
+                            
+                        if element.text:
+                            element_text_stripped = element.text.strip()
+                            # Exact match (normalize whitespace for comparison)
+                            original_normalized = ' '.join(original_text.split())
+                            element_normalized = ' '.join(element_text_stripped.split())
+                            
+                            if element_normalized == original_normalized:
+                                found_match = True
                                 # Preserve any leading/trailing whitespace from the original
                                 leading_space = ""
                                 trailing_space = ""
@@ -1011,17 +1130,40 @@ class SlideTranslator:
                                 if element.text.endswith(" "):
                                     trailing_space = " "
                                 # Update text
+                                old_text = element.text
                                 element.text = (
                                     leading_space + translation.strip() + trailing_space
                                 )
-
-                            else:
-                                # Find the parent run ('a:r') element and remove it
-                                parent_run = element.getparent()
-                                if parent_run is not None:
-                                    parent_paragraph = parent_run.getparent()
-                                    if parent_paragraph is not None:
-                                        parent_paragraph.remove(parent_run)
+                                if element_xpath:
+                                    updated_xpaths.add(element_xpath)
+                                total_updates += 1
+                                if self.verbose:
+                                    print(f"\tUpdated: '{original_text}' -> '{translation.strip()}'")
+                                break
+                    
+                    if not found_match:
+                        if self.verbose:
+                            print(f"\tWarning: Could not find matching element for: '{original_text}' (translation: '{translation.strip()}')")
+                        # Try to find partial matches as fallback
+                        for element in root.findall(".//a:t", self.namespaces):
+                            try:
+                                element_xpath = self._get_element_xpath(element, root)
+                            except:
+                                element_xpath = None
+                            if element_xpath and element_xpath in updated_xpaths:
+                                continue
+                            if element.text and original_text in element.text.strip():
+                                # Found partial match - update it
+                                element.text = element.text.replace(original_text, translation.strip())
+                                if element_xpath:
+                                    updated_xpaths.add(element_xpath)
+                                total_updates += 1
+                                if self.verbose:
+                                    print(f"\tApplied partial match update for: '{original_text}'")
+                                break
+                
+                if self.verbose:
+                    print(f"\t[DEBUG] Total text elements updated in this slide: {total_updates}")
 
                 if self.update_language:
                     # Check for stop request during language updates
@@ -1058,7 +1200,19 @@ class SlideTranslator:
                 ET.register_namespace(prefix, uri)
 
             # Write back XML while preserving declaration and namespaces
+            # Debug: Verify we're writing the updated tree
+            if self.verbose:
+                # Check a few text elements to verify they were updated
+                sample_texts = []
+                for elem in root.findall(".//a:t", self.namespaces)[:3]:
+                    if elem.text:
+                        sample_texts.append(elem.text.strip()[:50])
+                print(f"\t[DEBUG] Sample texts in XML before writing: {sample_texts}")
+            
             with open(slide_file, "wb") as f:
                 tree.write(f, encoding="UTF-8", xml_declaration=True)
+            
+            if self.verbose:
+                print(f"\t[DEBUG] XML file written: {slide_file}")
 
         return True

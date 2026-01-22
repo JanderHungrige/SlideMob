@@ -14,7 +14,18 @@ class PowerPointTranslator:
     def translate_presentation(self):
         """Main method to handle the full translation process"""
         try:
+            # Debug: Verify pipeline_config contains target_language
+            if self.pipeline_config:
+                target_lang = self.pipeline_config.get("target_language", "NOT SET")
+                print(f"\n[DEBUG] PowerPointTranslator received pipeline_config with target_language: '{target_lang}'")
+            else:
+                print(f"\n[WARNING] PowerPointTranslator received None pipeline_config!")
+            
             self.settings = PowerpointPipeline(pipeline_config=self.pipeline_config)
+            
+            # Debug: Verify settings has correct target_language
+            print(f"[DEBUG] PowerpointPipeline.settings.target_language: '{self.settings.target_language}'")
+            
             self.translator = SlideTranslator(pipeline_settings=self.settings)
 
             # Extract PPTX if needed
@@ -30,9 +41,12 @@ class PowerPointTranslator:
                 return False
 
             # Compose final PPTX
-            self.settings.compose_pptx(
+            compose_success = self.settings.compose_pptx(
                 self.settings.extract_path, self.settings.output_pptx
             )
+            if not compose_success:
+                print("Warning: Failed to compose final PPTX file")
+                return False
             return True
 
         except Exception as e:
