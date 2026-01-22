@@ -62,7 +62,6 @@ class SlideMobGUI(PowerpointPipeline):
         self.reduce_slides = tk.BooleanVar(value=False)
         self.merge_runs_var = tk.BooleanVar(value=False)
         self.save_into_copy = tk.BooleanVar(value=True)
-        self.translation_strategy = tk.StringVar(self.root, value="")
         self.gui_slide_selection = tk.StringVar(self.root, value="")
         
         # Status variable
