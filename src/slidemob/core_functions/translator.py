@@ -109,7 +109,7 @@ class SlideTranslator:
                 self.mapping_model_type = "unknown"
 
     def create_translation_map(
-        self, text_elements: list[ET.Element], original_text_elements: set
+        self, text_elements: list[ET.Element], original_text_elements: set, stop_check_callback=None
     ) -> dict:
         """Create a mapping between original text and their translations."""
         translation_map = {text: "" for text in original_text_elements}
@@ -119,6 +119,11 @@ class SlideTranslator:
             print(f"\t[DEBUG] Creating translation map with target_language: '{self.target_language}'")
             print(f"\t[DEBUG] Original text elements to translate: {list(original_text_elements)[:5]}...")
         for element in text_elements:
+            # Check for stop request before processing each paragraph
+            if stop_check_callback and stop_check_callback():
+                print("\nProcessing stopped by user during translation map creation")
+                return None  # Return None to indicate stop was requested
+            
             if element.text is not None:
                 self.original_text = element.text.strip()
                 source_lang = element.get("lang", "en-GB")
@@ -174,8 +179,13 @@ class SlideTranslator:
                          local_candidates = original_text_elements
 
                     translation_map = self._create_mapping_map(
-                        local_candidates, translated_text, translation_map
+                        local_candidates, translated_text, translation_map, stop_check_callback
                     )
+                    
+                    # Check for stop request after each paragraph translation
+                    if stop_check_callback and stop_check_callback():
+                        print("\nProcessing stopped by user during translation map creation")
+                        return None  # Return None to indicate stop was requested
         return translation_map
 
     def analyze_text(self, text: str) -> str:
@@ -702,12 +712,15 @@ class SlideTranslator:
 
 
     def _create_mapping_map(
-        self, original_text_elements: set, translated_text: str, translation_map: dict
+        self, original_text_elements: set, translated_text: str, translation_map: dict, stop_check_callback=None
     ) -> dict:
         """Create a mapping between original text and their translations."""
-        # Optimization: If there's only one text element, map 1:1 directly.
         if len(original_text_elements) == 1:
             return {next(iter(original_text_elements)): translated_text}
+            
+        if stop_check_callback and stop_check_callback():
+            return {}
+            
         try:
             if self.mapping_method == "OpenAI" or self.mapping_method == "Azure OpenAI":
                 prompt = mapping_prompt_openai(
@@ -1077,8 +1090,12 @@ class SlideTranslator:
                 if self.verbose:
                     print(f"\tFound {len(text_elements)} text elements and {len(original_text_elements)} original text pieces")
                 translation_map = self.create_translation_map(
-                    text_elements, original_text_elements
+                    text_elements, original_text_elements, stop_check_callback
                 )
+                # Check if stop was requested during translation map creation
+                if translation_map is None:
+                    print("\nProcessing stopped by user")
+                    return False
                 if self.verbose:
                     non_empty = sum(1 for v in translation_map.values() if v and v.strip())
                     print(f"\tTranslation map has {non_empty}/{len(translation_map)} non-empty translations")

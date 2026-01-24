@@ -26,11 +26,10 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 
-class SlideMobGUI(PowerpointPipeline):
+class SlideMobGUI:
     """Modern GUI for SlideMob PowerPoint Processor."""
     
     def __init__(self, root):
-        super().__init__()
         self.root = root
         self.root.title("SlideMob")
         self.root.geometry("900x700")
@@ -524,18 +523,6 @@ class SlideMobGUI(PowerpointPipeline):
             team_container.grid_columnconfigure(i, weight=1, uniform="team_columns")
         
         team_members = [
-            {
-                "id": "taras",
-                "name": "Taras",
-                "company": "Lead Developer",
-                "linkedin": "https://www.linkedin.com/",
-            },
-            {
-                "id": "martin",
-                "name": "Martin",
-                "company": "Technical Architect",
-                "linkedin": "https://www.linkedin.com/",
-            },
             {
                 "id": "jan",
                 "name": "Jan Werth",
@@ -1395,7 +1382,9 @@ class SlideMobGUI(PowerpointPipeline):
             
             if self.extract_var.get():
                 self.root.after(0, lambda: self.status_var.set("Extracting PPTX..."))
-                success = self.extract_pptx()
+                # Create a local pipeline instance for extraction since we no longer inherit it
+                extraction_pipeline = PowerpointPipeline(pipeline_config=config)
+                success = extraction_pipeline.extract_pptx()
                 if not success:
                     raise Exception("Extraction failed")
             
@@ -1469,6 +1458,7 @@ class SlideMobGUI(PowerpointPipeline):
         finally:
             def reset_ui():
                 self.processing = False
+                self.stop_requested = False  # Reset stop flag for next run
                 self.process_btn.configure(state="normal")
                 self.stop_btn.configure(state="disabled")
             self.root.after(0, reset_ui)
