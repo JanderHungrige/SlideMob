@@ -716,10 +716,11 @@ class SlideTranslator:
     ) -> dict:
         """Create a mapping between original text and their translations."""
         if len(original_text_elements) == 1:
-            return {next(iter(original_text_elements)): translated_text}
+            translation_map[next(iter(original_text_elements))] = translated_text
+            return translation_map
             
         if stop_check_callback and stop_check_callback():
-            return {}
+            return translation_map
             
         try:
             if self.mapping_method == "OpenAI" or self.mapping_method == "Azure OpenAI":
@@ -1113,7 +1114,7 @@ class SlideTranslator:
                         # Use split().join() for robust whitespace normalization
                         normalized_translation_map[' '.join(k.split())] = v.strip()
 
-                # Iterate through XML elements once
+                # Iterate through XML elements (N)
                 for element in root.findall(".//a:t", self.namespaces):
                     # Check for stop request during processing
                     if stop_check_callback and stop_check_callback():
@@ -1122,35 +1123,51 @@ class SlideTranslator:
 
                     if element.text:
                         original_text = element.text
-                        # Normalize current element text (consistent with map keys)
-                        element_text_stripped = original_text.strip()
-                        current_normalized = ' '.join(element_text_stripped.split())
+                        original_normalized = ' '.join(original_text.strip().split())
                         
-                        # Check if we have a translation for this exact text
-                        if current_normalized in normalized_translation_map:
-                            translation = normalized_translation_map[current_normalized]
-                            
-                            # Preserve leading/trailing whitespace
-                            leading_space = " " if original_text.startswith(" ") else ""
-                            trailing_space = " " if original_text.endswith(" ") else ""
-                            
-                            # Update XML element
-                            element.text = leading_space + translation + trailing_space
-                            total_updates += 1
-                            if self.verbose:
-                                print(f"\tUpdated: '{element_text_stripped}' -> '{translation}'")
+                        # Check against every translation key (M)
+                        # We sort keys by length descending to ensure longest matches are applied first
+                        # normalized_translation_map keys are already normalized
+                        sorted_keys = sorted(normalized_translation_map.keys(), key=len, reverse=True)
                         
-                        else:
-                            # Optional: Partial match fallback if exact match wasn't found
-                            # This handles cases where a segment in map might be a substring
-                            # only if we haven't already found a better way to map it.
-                            for orig_key, trans_val in normalized_translation_map.items():
-                                if trans_val and orig_key in current_normalized and len(orig_key) > 3:
-                                    element.text = original_text.replace(orig_key, trans_val)
-                                    total_updates += 1
-                                    if self.verbose:
-                                        print(f"\tApplied partial match fallback: '{orig_key}' -> '{trans_val}'")
-                                    break
+                        for key in sorted_keys:
+                            if not key: continue
+                            
+                            translation = normalized_translation_map[key]
+                            
+                            # Exact Match Check
+                            if key == original_normalized:
+                                # Preserve leading/trailing whitespace
+                                leading_space = " " if original_text.startswith(" ") else ""
+                                trailing_space = " " if original_text.endswith(" ") else ""
+                                
+                                element.text = leading_space + translation + trailing_space
+                                total_updates += 1
+                                if self.verbose:
+                                    print(f"\tUpdated (Exact): '{original_normalized}' -> '{translation}'")
+                                break # Stop checking other keys for this element if we found an exact match
+                                
+                            # Partial Match Check
+                            elif key in original_normalized and len(key) > 3:
+                                # Only replace if the key is a substring
+                                # We need to serve the original whitespace structure of the substring if possible,
+                                # but key normalization makes that hard. N-to-M partial replacement is tricky.
+                                # Here we do a simple string replacement on the *original* text if strictly contained.
+                                
+                                # Note: This simple replacement might fail if whitespace differs significantly.
+                                # But for the "one sentence split over slides" case, usually the split parts are clean.
+                                if key in original_text: # Check strict substring first
+                                     element.text = element.text.replace(key, translation)
+                                     total_updates += 1
+                                     if self.verbose:
+                                         print(f"\tUpdated (Partial): '{key}' -> '{translation}'")
+                                     # Don't break here, multiple partial matches might exist
+                            
+                            # Fallback: check normalized substring (more aggressive)
+                            elif key in original_normalized and len(key) > 3:
+                                # This is harder to apply back to original_text without disturbing formatting.
+                                # We skip this for now to avoid corrupting data, unless user demands it.
+                                pass
                 
                 if self.verbose:
                     print(f"\t[DEBUG] Total text elements updated in this slide: {total_updates}")
