@@ -62,7 +62,6 @@ You can package SlideMob into a standalone executable for macOS or Windows using
 
 **macOS:**
 ```bash
-poetry run python scripts/build_executable.py --platform mac
 ```
 
 **Windows:**
