@@ -1373,10 +1373,6 @@ class SlideMobGUI:
                 source_language=source_lang
             )
             
-            # Sync internal pipeline attributes with the new config
-            self.pipeline_config = config
-            self.get_config()
-            
             if self.stop_requested:
                 raise Exception("Processing stopped by user")
             
