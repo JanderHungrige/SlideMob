@@ -1443,6 +1443,10 @@ class SlideMobGUI:
                 f"Filename: {os.path.basename(output_file)}\n"
                 f"Folder: {output_folder}"
             )
+            
+            # Log to UI window
+            self._log_to_gui("SAVE LOCATION", f"{output_folder}\nFilename: {os.path.basename(output_file)}")
+            
             self.root.after(0, lambda: messagebox.showinfo("Success", success_msg))
         
         except Exception as e:
