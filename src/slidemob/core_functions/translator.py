@@ -1100,84 +1100,57 @@ class SlideTranslator:
                     non_empty = sum(1 for v in translation_map.values() if v and v.strip())
                     print(f"\tTranslation map has {non_empty}/{len(translation_map)} non-empty translations")
 
-                # Update text while preserving XML structure and whitespace
-                # Track which elements have been updated to avoid double-processing
-                # Use XPath-based tracking instead of id() for reliability
+                if self.verbose:
+                    print(f"\t[DEBUG] Translation Map Keys: {[repr(k) for k in list(translation_map.keys())[:5]]}...")
+                
                 updated_xpaths = set()
                 total_updates = 0
                 
-                for original_text, translation in translation_map.items():
-                    # Check for stop request during translation updates
+                # Create normalized lookup map for fast O(1) access
+                normalized_translation_map = {}
+                for k, v in translation_map.items():
+                    if k and k.strip():
+                        # Use split().join() for robust whitespace normalization
+                        normalized_translation_map[' '.join(k.split())] = v.strip()
+
+                # Iterate through XML elements once
+                for element in root.findall(".//a:t", self.namespaces):
+                    # Check for stop request during processing
                     if stop_check_callback and stop_check_callback():
                         print("\nProcessing stopped by user")
                         return False
 
-                    # Skip empty or None translations
-                    if not translation or translation.strip() == "":
-                        if self.verbose:
-                            print(f"\tSkipping empty translation for: '{original_text}'")
-                        continue
-                    
-                    # Update Text - find matching elements
-                    found_match = False
-                    for element in root.findall(".//a:t", self.namespaces):
-                        # Get XPath for this element to track updates reliably
-                        try:
-                            element_xpath = self._get_element_xpath(element, root)
-                        except:
-                            element_xpath = None
+                    if element.text:
+                        original_text = element.text
+                        # Normalize current element text (consistent with map keys)
+                        element_text_stripped = original_text.strip()
+                        current_normalized = ' '.join(element_text_stripped.split())
                         
-                        # Skip if already updated
-                        if element_xpath and element_xpath in updated_xpaths:
-                            continue
+                        # Check if we have a translation for this exact text
+                        if current_normalized in normalized_translation_map:
+                            translation = normalized_translation_map[current_normalized]
                             
-                        if element.text:
-                            element_text_stripped = element.text.strip()
-                            # Exact match (normalize whitespace for comparison)
-                            original_normalized = ' '.join(original_text.split())
-                            element_normalized = ' '.join(element_text_stripped.split())
+                            # Preserve leading/trailing whitespace
+                            leading_space = " " if original_text.startswith(" ") else ""
+                            trailing_space = " " if original_text.endswith(" ") else ""
                             
-                            if element_normalized == original_normalized:
-                                found_match = True
-                                # Preserve any leading/trailing whitespace from the original
-                                leading_space = ""
-                                trailing_space = ""
-                                if element.text.startswith(" "):
-                                    leading_space = " "
-                                if element.text.endswith(" "):
-                                    trailing_space = " "
-                                # Update text
-                                old_text = element.text
-                                element.text = (
-                                    leading_space + translation.strip() + trailing_space
-                                )
-                                if element_xpath:
-                                    updated_xpaths.add(element_xpath)
-                                total_updates += 1
-                                if self.verbose:
-                                    print(f"\tUpdated: '{original_text}' -> '{translation.strip()}'")
-                                break
-                    
-                    if not found_match:
-                        if self.verbose:
-                            print(f"\tWarning: Could not find matching element for: '{original_text}' (translation: '{translation.strip()}')")
-                        # Try to find partial matches as fallback
-                        for element in root.findall(".//a:t", self.namespaces):
-                            try:
-                                element_xpath = self._get_element_xpath(element, root)
-                            except:
-                                element_xpath = None
-                            if element_xpath and element_xpath in updated_xpaths:
-                                continue
-                            if element.text and original_text in element.text.strip():
-                                # Found partial match - update it
-                                element.text = element.text.replace(original_text, translation.strip())
-                                if element_xpath:
-                                    updated_xpaths.add(element_xpath)
-                                total_updates += 1
-                                if self.verbose:
-                                    print(f"\tApplied partial match update for: '{original_text}'")
-                                break
+                            # Update XML element
+                            element.text = leading_space + translation + trailing_space
+                            total_updates += 1
+                            if self.verbose:
+                                print(f"\tUpdated: '{element_text_stripped}' -> '{translation}'")
+                        
+                        else:
+                            # Optional: Partial match fallback if exact match wasn't found
+                            # This handles cases where a segment in map might be a substring
+                            # only if we haven't already found a better way to map it.
+                            for orig_key, trans_val in normalized_translation_map.items():
+                                if trans_val and orig_key in current_normalized and len(orig_key) > 3:
+                                    element.text = original_text.replace(orig_key, trans_val)
+                                    total_updates += 1
+                                    if self.verbose:
+                                        print(f"\tApplied partial match fallback: '{orig_key}' -> '{trans_val}'")
+                                    break
                 
                 if self.verbose:
                     print(f"\t[DEBUG] Total text elements updated in this slide: {total_updates}")
