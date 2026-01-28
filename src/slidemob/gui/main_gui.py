@@ -816,6 +816,7 @@ class SlideMobGUI:
             self.deepseek_translation_frame,
             self.azure_translation_frame,
             self.argos_translation_frame,
+            self.google_translation_frame,
         ]:
             frame.pack_forget()
 
@@ -833,6 +834,8 @@ class SlideMobGUI:
         elif method == "Argos Translate":
             self.argos_translation_frame.pack(fill="x", padx=10, pady=5)
             self._refresh_argos_info()
+        elif method == "Google":
+            self.google_translation_frame.pack(fill="x", padx=10, pady=5)
 
     def update_mapping_frames(self, *args):
         """Show the appropriate frame based on selected mapping method."""
@@ -842,6 +845,7 @@ class SlideMobGUI:
             self.huggingface_mapping_frame,
             self.deepseek_mapping_frame,
             self.azure_mapping_frame,
+            self.google_mapping_frame,
         ]:
             frame.pack_forget()
 
@@ -856,6 +860,8 @@ class SlideMobGUI:
             self.deepseek_mapping_frame.pack(fill="x", padx=10, pady=5)
         elif method == "Azure OpenAI":
             self.azure_mapping_frame.pack(fill="x", padx=10, pady=5)
+        elif method == "Google":
+            self.google_mapping_frame.pack(fill="x", padx=10, pady=5)
 
     def _create_config_tab(self):
         """Create the Configuration tab with 1:1 replication of dynamic SettingsWindow behavior."""
@@ -884,7 +890,7 @@ class SlideMobGUI:
         trans_main.columnconfigure(1, weight=1)
         
         # Method Selection
-        trans_methods = ["OpenAI", "DeepSeek", "Azure OpenAI", "HuggingFace", "LMStudio", "Argos Translate"]
+        trans_methods = ["OpenAI", "DeepSeek", "Azure OpenAI", "Google", "HuggingFace", "LMStudio", "Argos Translate"]
         ctk.CTkLabel(trans_main, text="Method:").grid(row=1, column=0, padx=(15, 10), pady=10, sticky="w")
         trans_dropdown = ctk.CTkComboBox(
             trans_main,
@@ -967,6 +973,11 @@ class SlideMobGUI:
         )
         self.argos_installed_label.pack(anchor="w", padx=15, pady=(0, 10))
         
+        # 7. Google Translation
+        self.google_translation_frame = ctk.CTkFrame(self.trans_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.google_translation_frame, text="Official Google Cloud Translation API (v2).", text_color="gray60").pack(anchor="w", padx=15)
+        ctk.CTkLabel(self.google_translation_frame, text="Make sure to enter your API Key in the 'API Keys' tab.", text_color="gray50", font=ctk.CTkFont(size=11)).pack(anchor="w", padx=15, pady=(0, 10))
+        
         # --- Mapping Settings Section ---
         map_main = ctk.CTkFrame(container, corner_radius=8)
         map_main.pack(fill="x", pady=(0, 15))
@@ -1024,6 +1035,10 @@ class SlideMobGUI:
         self.azure_map_params = self._create_azure_config_frame(self.azure_mapping_frame, "mapping")
         self.azure_map_params.pack(fill="x", pady=5)
         
+        # 6. Google Mapping
+        self.google_mapping_frame = ctk.CTkFrame(self.map_model_container, fg_color="transparent")
+        ctk.CTkLabel(self.google_mapping_frame, text="Google translation is used for mapping as well.", text_color="gray60").pack(anchor="w", padx=15)
+        
         # Save button
         save_btn = ctk.CTkButton(
             container,
@@ -1063,23 +1078,24 @@ class SlideMobGUI:
         keys_section.pack(fill="x", pady=(0, 15))
         
         api_keys = [
-            ("OpenAI API Key", "OPENAI_API_KEY"),
-            ("DeepSeek API Key", "DEEPSEEK_API_KEY"),
-            ("HuggingFace Token", "HUGGINGFACE"),
-            ("Azure Endpoint Key", "AZURE_OPENAI_ENDPOINT_KEY"),
-            ("Azure Endpoint URL", "AZURE_OPENAI_ENDPOINT"),
+            ("OpenAI API Key", "OPENAI_API_KEY", True),
+            ("DeepSeek API Key", "DEEPSEEK_API_KEY", True),
+            ("HuggingFace Token", "HUGGINGFACE", True),
+            ("Azure Endpoint URL", "AZURE_OPENAI_ENDPOINT", False),
+            ("Azure Endpoint Key", "AZURE_OPENAI_ENDPOINT_KEY", True),
+            ("Google Translate API Key", "GOOGLE_API_KEY", True),
         ]
         
         self.api_key_entries = {}
         
-        for label, env_var in api_keys:
+        for label, env_var, is_secret in api_keys:
             ctk.CTkLabel(
                 keys_section,
                 text=label,
                 font=ctk.CTkFont(size=13)
             ).pack(anchor="w", padx=15, pady=(10, 0))
             
-            entry = ctk.CTkEntry(keys_section, height=35, show="*")
+            entry = ctk.CTkEntry(keys_section, height=35, show="*" if is_secret else "")
             # Load existing value if present
             existing = os.getenv(env_var, "")
             if existing:
@@ -1089,6 +1105,17 @@ class SlideMobGUI:
         
         # Add some padding
         ctk.CTkFrame(keys_section, fg_color="transparent", height=10).pack()
+        
+        # Test Google Key button
+        self.test_google_btn = ctk.CTkButton(
+            frame,
+            text="Test Google Translate API Key",
+            height=40,
+            fg_color="gray40",
+            hover_color="gray30",
+            command=self._test_google_key
+        )
+        self.test_google_btn.pack(anchor="w", pady=(10, 0), padx=5)
         
         # Save button
         save_btn = ctk.CTkButton(
@@ -1147,6 +1174,36 @@ class SlideMobGUI:
                 set_key(env_path, env_var, value)
         
         messagebox.showinfo("Saved", "API keys saved successfully!")
+    
+    def _test_google_key(self):
+        """Verify the Google Translation API key."""
+        api_key = self.api_key_entries["GOOGLE_API_KEY"].get()
+        if not api_key:
+            messagebox.showerror("Error", "Please enter a Google Translate API Key first.")
+            return
+
+        def run_test():
+            self.status_var.set("Testing Google API key...")
+            try:
+                # Making a basic call to list languages or translate a tiny string
+                url = f"https://translation.googleapis.com/language/translate/v2?key={api_key}"
+                payload = {"q": "Hello", "target": "de"}
+                response = requests.post(url, json=payload, timeout=5)
+                if response.status_code == 200:
+                    self.root.after(0, lambda: messagebox.showinfo("Success", "Google Translate API Key is valid and working!"))
+                else:
+                    try:
+                        error_data = response.json()
+                        error_msg = error_data.get("error", {}).get("message", "Unknown error from Google API")
+                    except:
+                        error_msg = f"HTTP Error {response.status_code}"
+                    self.root.after(0, lambda msg=error_msg: messagebox.showerror("Error", f"Google Translate API Key validation failed: {msg}"))
+            except Exception as e:
+                self.root.after(0, lambda msg=str(e): messagebox.showerror("Error", f"Connection error: {msg}"))
+            finally:
+                self.root.after(0, lambda: self.status_var.set("Ready"))
+
+        threading.Thread(target=run_test, daemon=True).start()
     
     def _get_config_summary(self) -> str:
         """Generate a compact summary of current configuration for display."""

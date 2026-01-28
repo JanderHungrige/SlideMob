@@ -1,7 +1,5 @@
-import asyncio
-
-from googletrans import Translator
-
+import os
+import requests
 from .base import BaseTranslator
 
 
@@ -16,12 +14,22 @@ class GoogleTranslator(BaseTranslator):
             # Convert target language to Google code
             google_lang_code = self._get_google_lang_code(target_language)
 
-            async def translate_text():
-                async with Translator() as translator:
-                    result = await translator.translate(text, dest=google_lang_code)
-                return result.text
+            # Get API Key from environment
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                print("Error: GOOGLE_API_KEY not found in environment variables.")
+                return text
 
-            return asyncio.run(translate_text())
+            url = f"https://translation.googleapis.com/language/translate/v2?key={api_key}"
+            payload = {
+                "q": text,
+                "target": google_lang_code,
+                "format": "text"
+            }
+            response = requests.post(url, json=payload, timeout=10)
+            response.raise_for_status()
+            result = response.json()
+            return result["data"]["translations"][0]["translatedText"]
 
         except Exception as e:
             print(f"Google translation error: {e}")

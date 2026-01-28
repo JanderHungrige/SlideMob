@@ -4,7 +4,7 @@ import os
 import re
 import traceback
 
-from googletrans import Translator
+
 from langdetect import detect
 from lxml import etree as ET
 from openai import AzureOpenAI
@@ -335,12 +335,33 @@ class SlideTranslator:
             )
             google_lang_code = "en"
 
-        async def translate_text():
-            async with Translator() as translator:
-                self.result = await translator.translate(text, dest=google_lang_code)
+        # Get API Key from environment
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            print("Error: GOOGLE_API_KEY not found in environment variables.")
+            return text
 
-        asyncio.run(translate_text())
-        return self.result.text
+        try:
+            url = f"https://translation.googleapis.com/language/translate/v2?key={api_key}"
+            payload = {
+                "q": text,
+                "target": google_lang_code,
+                "format": "text"
+            }
+            response = requests.post(url, json=payload, timeout=10)
+            response.raise_for_status()
+            result = response.json()
+            return result["data"]["translations"][0]["translatedText"]
+        except Exception as e:
+            error_msg = str(e)
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    error_data = e.response.json()
+                    error_msg = error_data.get("error", {}).get("message", error_msg)
+                except:
+                    pass
+            print(f"Google translation error: {error_msg}")
+            return text
 
     def translate_text_deepseek(self, text: str) -> str:
         # result = self.analyze_text(text)
